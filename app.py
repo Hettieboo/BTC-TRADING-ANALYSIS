@@ -175,13 +175,22 @@ rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14)
 threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01) / 100
 
 st.sidebar.markdown("---")
+st.sidebar.subheader("Model Configuration")
 model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting"])
 test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20) / 100
+retrain_window = st.sidebar.slider("Retrain Window (days)", 100, 500, 252, 
+                                     help="How much recent data to use for training. Smaller = adapts faster to new trends")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.warning("""
+**⚠️ Model Performance:**
+ML models adapt to market conditions. Performance may vary as markets change. The model retrains on recent data to stay current.
+""")
 
 st.sidebar.markdown("---")
 st.sidebar.info("""
@@ -249,7 +258,7 @@ def add_features(df, ma_short, ma_long, rsi_period):
 df = add_features(btc, ma_short, ma_long, rsi_period)
 
 # =========================
-# ML Model Training
+# ML Model Training with Adaptive Window
 # =========================
 feature_cols = [f'MA_{ma_short}', f'MA_{ma_long}', 'MA_Diff', 'Volatility_7', 'Volatility_30',
                 'Momentum_7', 'Momentum_14', 'RSI', 'Lag_1', 'Lag_2', 'Lag_3']
@@ -260,21 +269,31 @@ y = df['Target']
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-split_idx = int(len(df) * (1 - test_size))
-X_train = X_scaled[:split_idx]
+# Use recent data for training (rolling window approach)
+train_start_idx = max(0, len(df) - retrain_window - int(len(df) * test_size))
+split_idx = len(df) - int(len(df) * test_size)
+
+X_train = X_scaled[train_start_idx:split_idx]
 X_test = X_scaled[split_idx:]
-y_train = y.iloc[:split_idx]
+y_train = y.iloc[train_start_idx:split_idx]
 y_test = y.iloc[split_idx:]
 
 if model_choice == "Random Forest":
-    model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=10)
+    model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=10, min_samples_split=10)
 else:
     from sklearn.ensemble import GradientBoostingRegressor
-    model = GradientBoostingRegressor(n_estimators=50, random_state=42, max_depth=5)
+    model = GradientBoostingRegressor(n_estimators=50, random_state=42, max_depth=5, min_samples_split=10)
 
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 r2 = r2_score(y_test, y_pred)
+
+# Calculate rolling performance to show adaptation over time
+rolling_window = 30
+rolling_r2 = []
+for i in range(rolling_window, len(y_test)):
+    window_r2 = r2_score(y_test.iloc[i-rolling_window:i], y_pred[i-rolling_window:i])
+    rolling_r2.append(window_r2)
 
 # Backtest
 df_test = df.iloc[split_idx:].copy()
@@ -514,11 +533,47 @@ with tab2:
     """)
 
 with tab3:
-    st.subheader("Model Performance")
-    col1, col2, col3 = st.columns(3)
+    st.subheader("Model Performance & Adaptation")
+    
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("R² Score", f"{r2:.4f}")
-    col2.metric("Training Samples", f"{len(X_train):,}")
-    col3.metric("Test Samples", f"{len(X_test):,}")
+    col2.metric("Training Window", f"{retrain_window} days")
+    col3.metric("Training Samples", f"{len(X_train):,}")
+    col4.metric("Test Samples", f"{len(X_test):,}")
+    
+    # Rolling Performance Chart - NEW
+    st.subheader("Model Adaptation Over Time")
+    fig_rolling, ax_rolling = plt.subplots(figsize=(14, 4))
+    test_dates = df.index[split_idx + rolling_window:]
+    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='30-Day Rolling R²')
+    ax_rolling.axhline(0, color='red', linestyle='--', linewidth=1, alpha=0.5)
+    ax_rolling.axhline(r2, color='green', linestyle='--', linewidth=1, alpha=0.5, label=f'Overall R² ({r2:.3f})')
+    ax_rolling.fill_between(test_dates, 0, rolling_r2, alpha=0.3, color='#8a5cf6')
+    ax_rolling.set_ylabel('R² Score')
+    ax_rolling.legend()
+    ax_rolling.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig_rolling)
+    plt.close()
+    
+    recent_performance = np.mean(rolling_r2[-10:]) if len(rolling_r2) >= 10 else r2
+    performance_trend = "improving" if recent_performance > r2 else "declining" if recent_performance < r2 * 0.9 else "stable"
+    adaptability = "good" if np.std(rolling_r2) < 0.3 else "moderate" if np.std(rolling_r2) < 0.5 else "volatile"
+    
+    st.info(f"""
+    **📊 Model Adaptation Analysis:**
+    This shows how well the model performs over time. Rolling R² is currently **{performance_trend}** with recent performance at **{recent_performance:.3f}**.
+    Model adaptability is **{adaptability}** (volatility: {np.std(rolling_r2):.3f}). 
+    
+    **Why performance varies:**
+    - 📈 **Market Regime Changes**: Bull markets vs bear markets require different strategies
+    - 🔄 **Pattern Shifts**: New trends that weren't in training data
+    - ⚡ **Volatility**: High volatility periods are harder to predict
+    - 📊 **Training Window**: Using {retrain_window} days of recent data to stay current
+    
+    Above zero = model adds value. Below zero = random guessing would be better. Adjust the training window to adapt faster or slower to new patterns.
+    """)
     
     col1, col2 = st.columns(2)
     
