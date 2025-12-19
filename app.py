@@ -307,19 +307,21 @@ st.markdown("*Easy-to-understand insights based on advanced analysis*")
 
 ai_insights = generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_rate, current_signal)
 
-# Action Banner
+# Action Banner - Compact Button Style
 action_colors = {
-    'BUY': 'background: linear-gradient(135deg, #10b981, #059669); color: white;',
-    'SELL': 'background: linear-gradient(135deg, #ef4444, #dc2626); color: white;',
-    'HOLD': 'background: linear-gradient(135deg, #f59e0b, #d97706); color: white;'
+    'BUY': ('background: linear-gradient(135deg, #10b981, #059669);', '🟢'),
+    'SELL': ('background: linear-gradient(135deg, #ef4444, #dc2626);', '🔴'),
+    'HOLD': ('background: linear-gradient(135deg, #f59e0b, #d97706);', '🟡')
 }
 
-st.markdown(f"""
-<div style='{action_colors[ai_insights["action"]]} padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px;'>
-    <h1 style='margin: 0; font-size: 3em;'>{ai_insights['action']}</h1>
-    <h3 style='margin: 10px 0 0 0;'>Confidence: {ai_insights['confidence']:.0f}% | Risk Level: {ai_insights['risk_level']}</h3>
-</div>
-""", unsafe_allow_html=True)
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.markdown(f"""
+    <div style='{action_colors[ai_insights["action"]][0]} color: white; padding: 20px 40px; border-radius: 12px; text-align: center; margin: 10px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s;'>
+        <h2 style='margin: 0; font-size: 2em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h2>
+        <p style='margin: 8px 0 0 0; font-size: 0.95em; opacity: 0.95;'>Confidence: {ai_insights['confidence']:.0f}% • Risk: {ai_insights['risk_level']}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Key Insights
 col1, col2 = st.columns([2, 1])
