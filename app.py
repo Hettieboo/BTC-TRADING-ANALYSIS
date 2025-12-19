@@ -1,533 +1,628 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, BarChart3, Zap, AlertCircle, CheckCircle, Brain, Target } from 'lucide-react';
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.preprocessing import StandardScaler
+import yfinance as yf
+import warnings
+warnings.filterwarnings('ignore')
 
-const BTCTradingDashboard = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [params, setParams] = useState({
-    maShort: 7,
-    maLong: 30,
-    threshold: 0.0005,
-    rsiPeriod: 14,
-    volatilityWindow: 7
-  });
-  const [selectedMetric, setSelectedMetric] = useState('returns');
-  const [hoverData, setHoverData] = useState(null);
-  const [animateCharts, setAnimateCharts] = useState(true);
+# =========================
+# Streamlit Page Config
+# =========================
+st.set_page_config(
+    page_title="BTC AI Trading Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-  // Generate synthetic BTC data with ML predictions
-  useEffect(() => {
-    generateData();
-  }, [params]);
+# Custom CSS for styling
+st.markdown("""
+<style>
+    .main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .stMetric {
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        padding: 20px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+    h1, h2, h3 {
+        color: white !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px 20px;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+</style>
+""", unsafe_allow_html=True)
 
-  const generateData = () => {
-    setLoading(true);
-    setTimeout(() => {
-      const days = 500;
-      const startPrice = 30000;
-      let price = startPrice;
-      const rawData = [];
+# =========================
+# Header
+# =========================
+st.title("⚡ BTC AI Trading Dashboard")
+st.markdown("### Advanced Algorithmic Trading with Machine Learning")
 
-      for (let i = 0; i < days; i++) {
-        const volatility = 0.02 + Math.random() * 0.03;
-        const trend = Math.sin(i / 50) * 0.001;
-        const change = (Math.random() - 0.48 + trend) * volatility;
-        price = price * (1 + change);
+# =========================
+# Sidebar Parameters
+# =========================
+st.sidebar.header("🎛️ Strategy Parameters")
+ma_short = st.sidebar.slider("Short MA Window", 5, 30, 7)
+ma_long = st.sidebar.slider("Long MA Window", 30, 120, 30)
+rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14)
+threshold = st.sidebar.slider("Signal Threshold (%)", 0.0, 1.0, 0.05, 0.01) / 100
+model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting"])
+test_size = st.sidebar.slider("Test Set Size (%)", 10, 40, 20) / 100
+
+st.sidebar.markdown("---")
+refresh_data = st.sidebar.button("🔄 Refresh Data", use_container_width=True)
+
+# =========================
+# Data Loading with Cache
+# =========================
+@st.cache_data(ttl=3600)
+def load_btc_data(start='2020-01-01', end='2024-12-19'):
+    try:
+        btc = yf.download('BTC-USD', start=start, end=end, progress=False)
+        if isinstance(btc.columns, pd.MultiIndex):
+            btc.columns = btc.columns.get_level_values(0)
+        return btc
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
+
+# Load data
+with st.spinner("Loading BTC data..."):
+    btc = load_btc_data()
+
+if btc is None or btc.empty:
+    st.error("Failed to load data. Please check your internet connection.")
+    st.stop()
+
+# =========================
+# Feature Engineering
+# =========================
+@st.cache_data
+def engineer_features(df, ma_short, ma_long, rsi_period):
+    data = df.copy()
+    data['Returns'] = data['Close'].pct_change()
+    data['Log_Returns'] = np.log(data['Close'] / data['Close'].shift(1))
+    
+    # Moving averages
+    data[f'MA_{ma_short}'] = data['Close'].rolling(ma_short).mean()
+    data[f'MA_{ma_long}'] = data['Close'].rolling(ma_long).mean()
+    data['MA_Diff'] = data[f'MA_{ma_short}'] - data[f'MA_{ma_long}']
+    
+    # Volatility
+    data['Volatility_7'] = data['Returns'].rolling(7).std()
+    data['Volatility_30'] = data['Returns'].rolling(30).std()
+    
+    # Momentum
+    data['Momentum_7'] = data['Close'] - data['Close'].shift(7)
+    data['Momentum_14'] = data['Close'] - data['Close'].shift(14)
+    
+    # Volume features
+    data['Volume_MA'] = data['Volume'].rolling(20).mean()
+    data['Volume_Ratio'] = data['Volume'] / data['Volume_MA']
+    
+    # RSI
+    delta = data['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+    rs = gain / loss
+    data['RSI'] = 100 - (100 / (1 + rs))
+    
+    # Bollinger Bands
+    data['BB_Middle'] = data['Close'].rolling(20).mean()
+    data['BB_Std'] = data['Close'].rolling(20).std()
+    data['BB_Upper'] = data['BB_Middle'] + (data['BB_Std'] * 2)
+    data['BB_Lower'] = data['BB_Middle'] - (data['BB_Std'] * 2)
+    data['BB_Position'] = (data['Close'] - data['BB_Lower']) / (data['BB_Upper'] - data['BB_Lower'])
+    
+    # Lag features
+    for i in [1, 2, 3, 5]:
+        data[f'Return_Lag_{i}'] = data['Returns'].shift(i)
+        data[f'Volume_Lag_{i}'] = data['Volume'].shift(i)
+    
+    # Target
+    data['Target'] = data['Returns'].shift(-1)
+    
+    return data.dropna()
+
+df = engineer_features(btc, ma_short, ma_long, rsi_period)
+
+# =========================
+# Key Metrics at Top
+# =========================
+latest = df.iloc[-1]
+prev = df.iloc[-2]
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    st.metric(
+        "BTC Price",
+        f"${latest['Close']:,.0f}",
+        f"{(latest['Close'] - prev['Close']) / prev['Close'] * 100:.2f}%"
+    )
+
+with col2:
+    st.metric(
+        "24h Volume",
+        f"${latest['Volume']/1e9:.2f}B",
+        f"{(latest['Volume'] - prev['Volume']) / prev['Volume'] * 100:.2f}%"
+    )
+
+with col3:
+    st.metric(
+        "RSI",
+        f"{latest['RSI']:.1f}",
+        "Overbought" if latest['RSI'] > 70 else "Oversold" if latest['RSI'] < 30 else "Neutral"
+    )
+
+with col4:
+    st.metric(
+        "Volatility (7d)",
+        f"{latest['Volatility_7']*100:.2f}%",
+        f"{((latest['Volatility_7'] - prev['Volatility_7']) / prev['Volatility_7'] * 100):.1f}%"
+    )
+
+with col5:
+    ma_signal = "Bullish" if latest[f'MA_{ma_short}'] > latest[f'MA_{ma_long}'] else "Bearish"
+    st.metric(
+        "MA Signal",
+        ma_signal,
+        f"{ma_short}/{ma_long}"
+    )
+
+st.markdown("---")
+
+# =========================
+# Tabs for Different Views
+# =========================
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Overview", 
+    "🎯 Trading Signals", 
+    "🤖 ML Analysis", 
+    "📉 Risk Metrics",
+    "📈 Advanced Charts"
+])
+
+# =========================
+# TAB 1: Overview
+# =========================
+with tab1:
+    # Price Chart with MAs
+    fig_price = go.Figure()
+    
+    fig_price.add_trace(go.Candlestick(
+        x=df.index[-200:],
+        open=df['Open'][-200:],
+        high=df['High'][-200:],
+        low=df['Low'][-200:],
+        close=df['Close'][-200:],
+        name='BTC Price'
+    ))
+    
+    fig_price.add_trace(go.Scatter(
+        x=df.index[-200:],
+        y=df[f'MA_{ma_short}'][-200:],
+        name=f'MA {ma_short}',
+        line=dict(color='#10b981', width=2)
+    ))
+    
+    fig_price.add_trace(go.Scatter(
+        x=df.index[-200:],
+        y=df[f'MA_{ma_long}'][-200:],
+        name=f'MA {ma_long}',
+        line=dict(color='#f59e0b', width=2)
+    ))
+    
+    fig_price.update_layout(
+        title='BTC Price with Moving Averages',
+        xaxis_title='Date',
+        yaxis_title='Price (USD)',
+        template='plotly_dark',
+        height=500,
+        hovermode='x unified'
+    )
+    
+    st.plotly_chart(fig_price, use_container_width=True)
+    
+    # Volume Chart
+    fig_volume = go.Figure()
+    colors = ['red' if row['Returns'] < 0 else 'green' for idx, row in df[-200:].iterrows()]
+    
+    fig_volume.add_trace(go.Bar(
+        x=df.index[-200:],
+        y=df['Volume'][-200:],
+        name='Volume',
+        marker_color=colors
+    ))
+    
+    fig_volume.update_layout(
+        title='Trading Volume',
+        xaxis_title='Date',
+        yaxis_title='Volume',
+        template='plotly_dark',
+        height=300
+    )
+    
+    st.plotly_chart(fig_volume, use_container_width=True)
+
+# =========================
+# TAB 2: Trading Signals
+# =========================
+with tab2:
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # RSI Chart
+        fig_rsi = go.Figure()
         
-        rawData.push({
-          date: new Date(2023, 0, 1 + i).toISOString().split('T')[0],
-          price: price,
-          volume: 1000000000 + Math.random() * 500000000,
-          change: change
-        });
-      }
-
-      // Calculate features
-      const processedData = rawData.map((d, i) => {
-        const slice = rawData.slice(Math.max(0, i - params.maLong), i + 1);
-        const maShort = i >= params.maShort 
-          ? slice.slice(-params.maShort).reduce((a, b) => a + b.price, 0) / params.maShort 
-          : d.price;
-        const maLong = i >= params.maLong 
-          ? slice.reduce((a, b) => a + b.price, 0) / slice.length 
-          : d.price;
+        fig_rsi.add_trace(go.Scatter(
+            x=df.index[-200:],
+            y=df['RSI'][-200:],
+            name='RSI',
+            line=dict(color='#8b5cf6', width=2)
+        ))
         
-        const returns = slice.slice(-params.volatilityWindow).map(x => x.change);
-        const volatility = Math.sqrt(returns.reduce((a, b) => a + b * b, 0) / returns.length);
+        fig_rsi.add_hline(y=70, line_dash="dash", line_color="red", annotation_text="Overbought")
+        fig_rsi.add_hline(y=30, line_dash="dash", line_color="green", annotation_text="Oversold")
         
-        // RSI calculation
-        const rsiSlice = rawData.slice(Math.max(0, i - params.rsiPeriod), i + 1);
-        const gains = rsiSlice.filter(x => x.change > 0).reduce((a, b) => a + b.change, 0);
-        const losses = Math.abs(rsiSlice.filter(x => x.change < 0).reduce((a, b) => a + b.change, 0));
-        const rsi = losses === 0 ? 100 : 100 - (100 / (1 + gains / losses));
-
-        // ML prediction (simulated)
-        const signal = maShort > maLong && rsi < 70 ? 1 : maShort < maLong && rsi > 30 ? -1 : 0;
-        const predictedReturn = signal * 0.001 * (1 + Math.random() * 0.5);
+        fig_rsi.update_layout(
+            title=f'RSI Indicator (Period: {rsi_period})',
+            xaxis_title='Date',
+            yaxis_title='RSI',
+            template='plotly_dark',
+            height=400
+        )
         
-        const strategyReturn = i > 0 ? signal * rawData[i].change : 0;
+        st.plotly_chart(fig_rsi, use_container_width=True)
+    
+    with col2:
+        # Bollinger Bands
+        fig_bb = go.Figure()
         
-        return {
-          ...d,
-          maShort,
-          maLong,
-          volatility: volatility * 100,
-          rsi,
-          signal,
-          predictedReturn: predictedReturn * 100,
-          strategyReturn: strategyReturn * 100,
-          marketReturn: d.change * 100
-        };
-      });
+        fig_bb.add_trace(go.Scatter(
+            x=df.index[-200:],
+            y=df['BB_Upper'][-200:],
+            name='Upper Band',
+            line=dict(color='red', width=1, dash='dash')
+        ))
+        
+        fig_bb.add_trace(go.Scatter(
+            x=df.index[-200:],
+            y=df['Close'][-200:],
+            name='Price',
+            line=dict(color='white', width=2)
+        ))
+        
+        fig_bb.add_trace(go.Scatter(
+            x=df.index[-200:],
+            y=df['BB_Lower'][-200:],
+            name='Lower Band',
+            line=dict(color='green', width=1, dash='dash'),
+            fill='tonexty'
+        ))
+        
+        fig_bb.update_layout(
+            title='Bollinger Bands',
+            xaxis_title='Date',
+            yaxis_title='Price (USD)',
+            template='plotly_dark',
+            height=400
+        )
+        
+        st.plotly_chart(fig_bb, use_container_width=True)
+    
+    # Volatility
+    fig_vol = go.Figure()
+    
+    fig_vol.add_trace(go.Scatter(
+        x=df.index[-200:],
+        y=df['Volatility_7'][-200:] * 100,
+        name='7-day Volatility',
+        fill='tozeroy',
+        line=dict(color='#ef4444')
+    ))
+    
+    fig_vol.update_layout(
+        title='Price Volatility',
+        xaxis_title='Date',
+        yaxis_title='Volatility (%)',
+        template='plotly_dark',
+        height=300
+    )
+    
+    st.plotly_chart(fig_vol, use_container_width=True)
 
-      // Calculate cumulative returns
-      let cumMarket = 1;
-      let cumStrategy = 1;
-      processedData.forEach(d => {
-        cumMarket *= (1 + d.marketReturn / 100);
-        cumStrategy *= (1 + d.strategyReturn / 100);
-        d.cumMarket = cumMarket;
-        d.cumStrategy = cumStrategy;
-      });
+# =========================
+# TAB 3: ML Analysis
+# =========================
+with tab3:
+    st.subheader("Machine Learning Model Training")
+    
+    # Feature selection
+    feature_cols = [f'MA_{ma_short}', f'MA_{ma_long}', 'MA_Diff', 'Volatility_7', 'Volatility_30',
+                    'Momentum_7', 'Momentum_14', 'RSI', 'BB_Position', 'Volume_Ratio',
+                    'Return_Lag_1', 'Return_Lag_2', 'Return_Lag_3', 'Return_Lag_5']
+    
+    X = df[feature_cols]
+    y = df['Target']
+    
+    # Scaling
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    X_scaled = pd.DataFrame(X_scaled, columns=feature_cols, index=X.index)
+    
+    # Split
+    split_idx = int(len(df) * (1 - test_size))
+    X_train, X_test = X_scaled[:split_idx], X_scaled[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+    
+    # Train model
+    with st.spinner(f"Training {model_choice} model..."):
+        if model_choice == "Random Forest":
+            model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+        else:
+            model = GradientBoostingRegressor(n_estimators=100, random_state=42)
+        
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+    
+    # Metrics
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("R² Score", f"{r2:.4f}")
+    col2.metric("MAE", f"{mae:.6f}")
+    col3.metric("Training Samples", f"{len(X_train):,}")
+    
+    # Feature Importance
+    importance_df = pd.DataFrame({
+        'Feature': feature_cols,
+        'Importance': model.feature_importances_
+    }).sort_values('Importance', ascending=True)
+    
+    fig_importance = go.Figure(go.Bar(
+        x=importance_df['Importance'],
+        y=importance_df['Feature'],
+        orientation='h',
+        marker=dict(color=importance_df['Importance'], colorscale='Viridis')
+    ))
+    
+    fig_importance.update_layout(
+        title='Feature Importance',
+        xaxis_title='Importance',
+        template='plotly_dark',
+        height=500
+    )
+    
+    st.plotly_chart(fig_importance, use_container_width=True)
+    
+    # Prediction vs Actual
+    fig_pred = go.Figure()
+    
+    fig_pred.add_trace(go.Scatter(
+        x=y_test.values,
+        y=y_pred,
+        mode='markers',
+        name='Predictions',
+        marker=dict(color='#8b5cf6', size=8, opacity=0.6)
+    ))
+    
+    fig_pred.add_trace(go.Scatter(
+        x=[y_test.min(), y_test.max()],
+        y=[y_test.min(), y_test.max()],
+        mode='lines',
+        name='Perfect Prediction',
+        line=dict(color='red', dash='dash')
+    ))
+    
+    fig_pred.update_layout(
+        title='Predicted vs Actual Returns',
+        xaxis_title='Actual Returns',
+        yaxis_title='Predicted Returns',
+        template='plotly_dark',
+        height=500
+    )
+    
+    st.plotly_chart(fig_pred, use_container_width=True)
 
-      setData(processedData);
-      setLoading(false);
-    }, 500);
-  };
+# =========================
+# TAB 4: Risk Metrics
+# =========================
+with tab4:
+    # Backtest the strategy
+    df_test = df.iloc[split_idx:].copy()
+    df_test['Predicted_Return'] = y_pred
+    df_test['Signal'] = 0
+    df_test.loc[df_test['Predicted_Return'] > threshold, 'Signal'] = 1
+    df_test.loc[df_test['Predicted_Return'] < -threshold, 'Signal'] = -1
+    df_test['Strategy_Returns'] = df_test['Signal'] * df_test['Returns']
+    df_test['Cumulative_Market'] = (1 + df_test['Returns']).cumprod()
+    df_test['Cumulative_Strategy'] = (1 + df_test['Strategy_Returns']).cumprod()
+    
+    # Calculate metrics
+    market_return = (df_test['Cumulative_Market'].iloc[-1] - 1) * 100
+    strategy_return = (df_test['Cumulative_Strategy'].iloc[-1] - 1) * 100
+    
+    if df_test['Strategy_Returns'].std() > 0:
+        sharpe = (df_test['Strategy_Returns'].mean() / df_test['Strategy_Returns'].std()) * np.sqrt(252)
+    else:
+        sharpe = 0
+    
+    # Calculate max drawdown
+    cumulative = df_test['Cumulative_Strategy']
+    running_max = cumulative.expanding().max()
+    drawdown = (cumulative - running_max) / running_max * 100
+    max_drawdown = drawdown.min()
+    
+    # Win rate
+    winning_trades = len(df_test[(df_test['Signal'] != 0) & (df_test['Strategy_Returns'] > 0)])
+    total_trades = len(df_test[df_test['Signal'] != 0])
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    # Display metrics
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Market Return", f"{market_return:.2f}%")
+    col2.metric("Strategy Return", f"{strategy_return:.2f}%", f"{strategy_return - market_return:.2f}%")
+    col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+    col4.metric("Max Drawdown", f"{max_drawdown:.2f}%")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Trades", total_trades)
+    col2.metric("Win Rate", f"{win_rate:.1f}%")
+    col3.metric("Long Signals", len(df_test[df_test['Signal'] == 1]))
+    col4.metric("Short Signals", len(df_test[df_test['Signal'] == -1]))
+    
+    # Cumulative Returns
+    fig_cumulative = go.Figure()
+    
+    fig_cumulative.add_trace(go.Scatter(
+        x=df_test.index,
+        y=df_test['Cumulative_Market'],
+        name='Buy & Hold',
+        line=dict(color='#ef4444', width=3)
+    ))
+    
+    fig_cumulative.add_trace(go.Scatter(
+        x=df_test.index,
+        y=df_test['Cumulative_Strategy'],
+        name='ML Strategy',
+        line=dict(color='#10b981', width=3)
+    ))
+    
+    fig_cumulative.update_layout(
+        title='Cumulative Returns Comparison',
+        xaxis_title='Date',
+        yaxis_title='Cumulative Return',
+        template='plotly_dark',
+        height=500,
+        hovermode='x unified'
+    )
+    
+    st.plotly_chart(fig_cumulative, use_container_width=True)
+    
+    # Drawdown Chart
+    fig_dd = go.Figure()
+    
+    fig_dd.add_trace(go.Scatter(
+        x=df_test.index,
+        y=drawdown,
+        fill='tozeroy',
+        name='Drawdown',
+        line=dict(color='#f59e0b')
+    ))
+    
+    fig_dd.update_layout(
+        title='Strategy Drawdown',
+        xaxis_title='Date',
+        yaxis_title='Drawdown (%)',
+        template='plotly_dark',
+        height=300
+    )
+    
+    st.plotly_chart(fig_dd, use_container_width=True)
 
-  if (loading || !data) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto"></div>
-          <p className="text-white mt-4 text-xl">Loading BTC Trading Intelligence...</p>
-        </div>
-      </div>
-    );
-  }
+# =========================
+# TAB 5: Advanced Charts
+# =========================
+with tab5:
+    # Returns Distribution
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        fig_dist = go.Figure()
+        fig_dist.add_trace(go.Histogram(
+            x=df_test['Returns'] * 100,
+            name='Market Returns',
+            opacity=0.7,
+            marker_color='#ef4444'
+        ))
+        fig_dist.add_trace(go.Histogram(
+            x=df_test['Strategy_Returns'] * 100,
+            name='Strategy Returns',
+            opacity=0.7,
+            marker_color='#10b981'
+        ))
+        
+        fig_dist.update_layout(
+            title='Returns Distribution',
+            xaxis_title='Returns (%)',
+            yaxis_title='Frequency',
+            template='plotly_dark',
+            barmode='overlay',
+            height=400
+        )
+        
+        st.plotly_chart(fig_dist, use_container_width=True)
+    
+    with col2:
+        # Signal Timeline
+        fig_signals = go.Figure()
+        
+        fig_signals.add_trace(go.Scatter(
+            x=df_test.index,
+            y=df_test['Signal'],
+            mode='lines',
+            name='Trading Signal',
+            line=dict(color='#8b5cf6', width=2),
+            fill='tozeroy'
+        ))
+        
+        fig_signals.update_layout(
+            title='Trading Signals Over Time',
+            xaxis_title='Date',
+            yaxis_title='Signal',
+            template='plotly_dark',
+            height=400
+        )
+        
+        st.plotly_chart(fig_signals, use_container_width=True)
+    
+    # Correlation Heatmap
+    corr_features = ['Returns', 'RSI', 'Volatility_7', 'MA_Diff', 'Volume_Ratio']
+    corr_matrix = df[corr_features].corr()
+    
+    fig_corr = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=corr_matrix.columns,
+        y=corr_matrix.columns,
+        colorscale='RdBu',
+        zmid=0,
+        text=corr_matrix.values.round(2),
+        texttemplate='%{text}',
+        textfont={"size": 10}
+    ))
+    
+    fig_corr.update_layout(
+        title='Feature Correlation Matrix',
+        template='plotly_dark',
+        height=500
+    )
+    
+    st.plotly_chart(fig_corr, use_container_width=True)
 
-  const latest = data[data.length - 1];
-  const strategyReturn = ((latest.cumStrategy - 1) * 100).toFixed(2);
-  const marketReturn = ((latest.cumMarket - 1) * 100).toFixed(2);
-  const sharpe = (data.reduce((a, b) => a + b.strategyReturn, 0) / 
-    Math.sqrt(data.reduce((a, b) => a + b.strategyReturn ** 2, 0))) * Math.sqrt(252);
-  
-  const winRate = (data.filter(d => d.signal !== 0 && d.strategyReturn > 0).length / 
-    data.filter(d => d.signal !== 0).length * 100).toFixed(1);
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: Activity },
-    { id: 'signals', label: 'Trading Signals', icon: Target },
-    { id: 'ml', label: 'ML Insights', icon: Brain },
-    { id: 'risk', label: 'Risk Analysis', icon: AlertCircle }
-  ];
-
-  const StatCard = ({ title, value, change, icon: Icon, color }) => (
-    <div className={`bg-gradient-to-br ${color} p-6 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 cursor-pointer`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-white/80 text-sm font-medium">{title}</p>
-          <p className="text-white text-3xl font-bold mt-2">{value}</p>
-          {change && (
-            <p className={`text-sm mt-2 flex items-center ${parseFloat(change) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-              {parseFloat(change) >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-              {change}%
-            </p>
-          )}
-        </div>
-        <div className="bg-white/20 p-4 rounded-full">
-          <Icon className="w-8 h-8 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-5xl font-bold text-white mb-2 flex items-center">
-                <Zap className="w-12 h-12 mr-3 text-yellow-400" />
-                BTC AI Trading Dashboard
-              </h1>
-              <p className="text-purple-200 text-lg">Advanced algorithmic trading with machine learning</p>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={generateData}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
-              >
-                🔄 Refresh Data
-              </button>
-              <button 
-                onClick={() => setAnimateCharts(!animateCharts)}
-                className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-semibold transition-all"
-              >
-                {animateCharts ? '⏸' : '▶'} Animate
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard 
-            title="Current BTC Price" 
-            value={`$${latest.price.toFixed(0)}`}
-            change={latest.marketReturn.toFixed(2)}
-            icon={DollarSign}
-            color="from-blue-600 to-blue-800"
-          />
-          <StatCard 
-            title="Strategy Return" 
-            value={`${strategyReturn}%`}
-            change={strategyReturn}
-            icon={TrendingUp}
-            color="from-green-600 to-green-800"
-          />
-          <StatCard 
-            title="Win Rate" 
-            value={`${winRate}%`}
-            icon={CheckCircle}
-            color="from-purple-600 to-purple-800"
-          />
-          <StatCard 
-            title="Sharpe Ratio" 
-            value={sharpe.toFixed(2)}
-            icon={BarChart3}
-            color="from-orange-600 to-orange-800"
-          />
-        </div>
-
-        {/* Controls Panel */}
-        <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg mb-8 border border-purple-500/20">
-          <h3 className="text-white text-xl font-bold mb-4 flex items-center">
-            <Activity className="w-6 h-6 mr-2 text-purple-400" />
-            Strategy Parameters
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            <div>
-              <label className="text-purple-200 text-sm block mb-2">Short MA: {params.maShort}</label>
-              <input 
-                type="range" 
-                min="5" 
-                max="30" 
-                value={params.maShort}
-                onChange={(e) => setParams({...params, maShort: parseInt(e.target.value)})}
-                className="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="text-purple-200 text-sm block mb-2">Long MA: {params.maLong}</label>
-              <input 
-                type="range" 
-                min="30" 
-                max="100" 
-                value={params.maLong}
-                onChange={(e) => setParams({...params, maLong: parseInt(e.target.value)})}
-                className="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="text-purple-200 text-sm block mb-2">RSI Period: {params.rsiPeriod}</label>
-              <input 
-                type="range" 
-                min="7" 
-                max="28" 
-                value={params.rsiPeriod}
-                onChange={(e) => setParams({...params, rsiPeriod: parseInt(e.target.value)})}
-                className="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="text-purple-200 text-sm block mb-2">Volatility Window: {params.volatilityWindow}</label>
-              <input 
-                type="range" 
-                min="5" 
-                max="30" 
-                value={params.volatilityWindow}
-                onChange={(e) => setParams({...params, volatilityWindow: parseInt(e.target.value)})}
-                className="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="text-purple-200 text-sm block mb-2">Threshold: {(params.threshold * 100).toFixed(2)}%</label>
-              <input 
-                type="range" 
-                min="0.0001" 
-                max="0.01" 
-                step="0.0001"
-                value={params.threshold}
-                onChange={(e) => setParams({...params, threshold: parseFloat(e.target.value)})}
-                className="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                activeTab === tab.id 
-                  ? 'bg-purple-600 text-white shadow-lg transform scale-105' 
-                  : 'bg-slate-800/50 text-purple-200 hover:bg-slate-700/50'
-              }`}
-            >
-              <tab.icon className="w-5 h-5" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <>
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">Price Chart with Moving Averages</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <AreaChart data={data.slice(-200)}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                    <YAxis stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                      labelStyle={{color: '#fff'}}
-                    />
-                    <Legend />
-                    <Area type="monotone" dataKey="price" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorPrice)" name="BTC Price" />
-                    <Line type="monotone" dataKey="maShort" stroke="#10b981" strokeWidth={2} dot={false} name={`MA ${params.maShort}`} />
-                    <Line type="monotone" dataKey="maLong" stroke="#f59e0b" strokeWidth={2} dot={false} name={`MA ${params.maLong}`} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">Cumulative Returns Comparison</h3>
-                <ResponsiveContainer width="100%" height={350}>
-                  <LineChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                    <YAxis stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                      labelStyle={{color: '#fff'}}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="cumMarket" stroke="#ef4444" strokeWidth={3} dot={false} name="Buy & Hold" />
-                    <Line type="monotone" dataKey="cumStrategy" stroke="#10b981" strokeWidth={3} dot={false} name="ML Strategy" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'signals' && (
-            <>
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">Trading Signals</h3>
-                <ResponsiveContainer width="100%" height={350}>
-                  <ScatterChart data={data.slice(-100).filter(d => d.signal !== 0)}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                    <YAxis dataKey="price" stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                      cursor={{strokeDasharray: '3 3'}}
-                    />
-                    <Legend />
-                    <Scatter name="Long" data={data.slice(-100).filter(d => d.signal === 1)} fill="#10b981" />
-                    <Scatter name="Short" data={data.slice(-100).filter(d => d.signal === -1)} fill="#ef4444" />
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">RSI Indicator</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={data.slice(-150)}>
-                    <defs>
-                      <linearGradient id="colorRSI" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                    <YAxis domain={[0, 100]} stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                    />
-                    <Area type="monotone" dataKey="rsi" stroke="#f59e0b" fillOpacity={1} fill="url(#colorRSI)" name="RSI" />
-                    <Line type="monotone" y={70} stroke="#ef4444" strokeDasharray="5 5" />
-                    <Line type="monotone" y={30} stroke="#10b981" strokeDasharray="5 5" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'ml' && (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                  <h3 className="text-white text-xl font-bold mb-4">ML Predictions vs Actual</h3>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <ScatterChart>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                      <XAxis dataKey="predictedReturn" name="Predicted" stroke="#888" />
-                      <YAxis dataKey="strategyReturn" name="Actual" stroke="#888" />
-                      <Tooltip 
-                        contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                        cursor={{strokeDasharray: '3 3'}}
-                      />
-                      <Scatter name="Predictions" data={data.slice(-100)} fill="#8b5cf6" />
-                    </ScatterChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                  <h3 className="text-white text-xl font-bold mb-4">Feature Importance (Simulated)</h3>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={[
-                      {name: 'MA Short', value: 0.25},
-                      {name: 'MA Long', value: 0.22},
-                      {name: 'RSI', value: 0.18},
-                      {name: 'Volatility', value: 0.15},
-                      {name: 'Volume', value: 0.12},
-                      {name: 'Momentum', value: 0.08}
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                      <XAxis dataKey="name" stroke="#888" />
-                      <YAxis stroke="#888" />
-                      <Tooltip 
-                        contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                      />
-                      <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">Strategy Returns Distribution</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={
-                    Array.from({length: 20}, (_, i) => {
-                      const min = Math.min(...data.map(d => d.strategyReturn));
-                      const max = Math.max(...data.map(d => d.strategyReturn));
-                      const binSize = (max - min) / 20;
-                      const binStart = min + i * binSize;
-                      const count = data.filter(d => d.strategyReturn >= binStart && d.strategyReturn < binStart + binSize).length;
-                      return {bin: binStart.toFixed(2), count};
-                    })
-                  }>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="bin" stroke="#888" />
-                    <YAxis stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                    />
-                    <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'risk' && (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                  <h3 className="text-white text-xl font-bold mb-4">Volatility Over Time</h3>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <AreaChart data={data.slice(-150)}>
-                      <defs>
-                        <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                      <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                      <YAxis stroke="#888" />
-                      <Tooltip 
-                        contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                      />
-                      <Area type="monotone" dataKey="volatility" stroke="#ef4444" fillOpacity={1} fill="url(#colorVol)" name="Volatility %" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                  <h3 className="text-white text-xl font-bold mb-4">Risk Metrics Radar</h3>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <RadarChart data={[
-                      {metric: 'Sharpe', value: Math.min(sharpe / 3 * 100, 100)},
-                      {metric: 'Win Rate', value: parseFloat(winRate)},
-                      {metric: 'Return', value: Math.min(Math.abs(parseFloat(strategyReturn)), 100)},
-                      {metric: 'Stability', value: 75},
-                      {metric: 'Efficiency', value: 82}
-                    ]}>
-                      <PolarGrid stroke="#444" />
-                      <PolarAngleAxis dataKey="metric" stroke="#888" />
-                      <PolarRadiusAxis stroke="#888" />
-                      <Radar name="Risk Profile" dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-purple-500/20">
-                <h3 className="text-white text-xl font-bold mb-4">Drawdown Analysis</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={data.map((d, i) => {
-                    const peak = Math.max(...data.slice(0, i + 1).map(x => x.cumStrategy));
-                    const drawdown = ((d.cumStrategy - peak) / peak * 100);
-                    return {...d, drawdown};
-                  })}>
-                    <defs>
-                      <linearGradient id="colorDD" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="date" stroke="#888" tick={{fontSize: 12}} />
-                    <YAxis stroke="#888" />
-                    <Tooltip 
-                      contentStyle={{backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px'}}
-                    />
-                    <Area type="monotone" dataKey="drawdown" stroke="#f59e0b" fillOpacity={1} fill="url(#colorDD)" name="Drawdown %" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center text-purple-300 text-sm">
-          <p>🚀 Powered by Advanced ML Algorithms | Real-time BTC Analysis | {data.length} Data Points</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default BTCTradingDashboard;
+# Footer
+st.markdown("---")
+st.markdown(
+    f"<div style='text-align: center; color: white;'>"
+    f"🚀 Powered by AI | {len(df)} Data Points | Last Updated: {df.index[-1].strftime('%Y-%m-%d')}"
+    f"</div>",
+    unsafe_allow_html=True
+)
