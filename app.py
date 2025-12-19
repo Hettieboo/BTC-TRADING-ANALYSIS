@@ -321,6 +321,13 @@ st.markdown("""
     div[data-testid="stMetricDelta"] {
         font-size: 0.75rem !important;
     }
+    .action-button-container {
+        background-color: rgba(138, 92, 246, 0.1);
+        border: 1px solid rgba(138, 92, 246, 0.2);
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -335,9 +342,11 @@ action_colors = {
 
 with col1:
     st.markdown(f"""
-    <div style='background: {action_colors[ai_insights["action"]][0]}; color: white; padding: 10px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-        <h3 style='margin: 0; font-size: 1.2em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h3>
-        <p style='margin: 3px 0 0 0; font-size: 0.7em;'>Conf: {ai_insights['confidence']:.0f}% • {ai_insights['risk_level']} Risk</p>
+    <div class='action-button-container'>
+        <div style='background: {action_colors[ai_insights["action"]][0]}; color: white; padding: 8px; border-radius: 6px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+            <h3 style='margin: 0; font-size: 1.1em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h3>
+            <p style='margin: 2px 0 0 0; font-size: 0.68em;'>Conf: {ai_insights['confidence']:.0f}% • {ai_insights['risk_level']} Risk</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
