@@ -387,6 +387,19 @@ with tab1:
     st.pyplot(fig)
     plt.close()
     
+    # Analyze the chart
+    ma_cross = "bullish crossover" if latest[f'MA_{ma_short}'] > latest[f'MA_{ma_long}'] else "bearish crossover"
+    recent_trend = "uptrend" if df['Close'].iloc[-1] > df['Close'].iloc[-30] else "downtrend"
+    price_vs_ma = "above" if latest['Close'] > latest[f'MA_{ma_long}'] else "below"
+    
+    st.info(f"""
+    **📊 What This Chart Shows:** 
+    The purple line is Bitcoin's price over the last 300 days. The green line (MA{ma_short}) shows the short-term average, 
+    while the orange line (MA{ma_long}) shows the long-term average. Currently showing a **{ma_cross}** pattern. 
+    Price is **{price_vs_ma}** the long-term average, indicating a **{recent_trend}**. 
+    When the short MA crosses above the long MA, it's typically a buy signal (bullish). When it crosses below, it's a sell signal (bearish).
+    """)
+    
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Volume")
@@ -398,6 +411,16 @@ with tab1:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        avg_volume = df['Volume'][-30:].mean()
+        recent_volume = df['Volume'][-5:].mean()
+        volume_trend = "higher" if recent_volume > avg_volume else "lower"
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        Trading volume shows how much Bitcoin is being bought and sold. Green bars = price went up that day, red bars = price went down. 
+        Recent volume is **{volume_trend}** than the 30-day average. Higher volume during price increases suggests strong buying pressure. 
+        Low volume during price changes may indicate weak conviction.
+        """)
     
     with col2:
         st.subheader("Returns Distribution")
@@ -409,6 +432,17 @@ with tab1:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        positive_days = (df['Returns'] > 0).sum()
+        total_days = len(df['Returns'].dropna())
+        positive_pct = (positive_days / total_days * 100)
+        avg_return = df['Returns'].mean() * 100
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        This histogram shows how often Bitcoin had gains vs losses. **{positive_pct:.1f}%** of days were positive. 
+        The red line at zero separates gains (right) from losses (left). Average daily return is **{avg_return:.3f}%**. 
+        A wider spread means higher volatility. Most days cluster near zero with occasional large moves.
+        """)
 
 with tab2:
     col1, col2 = st.columns(2)
@@ -428,6 +462,14 @@ with tab2:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        RSI (Relative Strength Index) measures momentum from 0-100. Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
+        Above 70 (red zone) = overbought, potential sell signal. Below 30 (green zone) = oversold, potential buy signal. 
+        RSI helps identify when Bitcoin might reverse direction after extreme moves.
+        """)
     
     with col2:
         st.subheader("Bollinger Bands")
@@ -442,6 +484,34 @@ with tab2:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
+        bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        Bollinger Bands show volatility channels. Price is currently **{bb_status}** ({bb_position:.0f}% position). 
+        When price touches the upper band (red), it may be overbought. Touching the lower band (green) may indicate oversold. 
+        Bands widen during high volatility and narrow during calm periods. Price tends to bounce between the bands.
+        """)
+    
+    st.subheader("Volatility Over Time")
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.fill_between(df.index[-200:], 0, df['Volatility_7'][-200:] * 100, alpha=0.7, color='#ef4444')
+    ax.plot(df.index[-200:], df['Volatility_7'][-200:] * 100, linewidth=2, color='#ef4444')
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    avg_vol = df['Volatility_7'].mean() * 100
+    current_vol_status = "high" if latest['Volatility_7'] * 100 > avg_vol * 1.5 else "low" if latest['Volatility_7'] * 100 < avg_vol * 0.5 else "normal"
+    st.info(f"""
+    **📊 What This Chart Shows:** 
+    Volatility measures price fluctuations. Currently at **{latest['Volatility_7']*100:.2f}%** ({current_vol_status}). 
+    Higher volatility = larger price swings = more risk but also more opportunity. 
+    Lower volatility = stable prices. Spikes often precede major price moves. Average volatility is **{avg_vol:.2f}%**.
+    """)
 
 with tab3:
     st.subheader("Model Performance")
@@ -465,6 +535,16 @@ with tab3:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        top_feature = importance.iloc[0]['Feature']
+        top_importance = importance.iloc[0]['Importance'] * 100
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        This shows which indicators the AI model considers most important for predictions. 
+        **{top_feature}** is the most influential factor ({top_importance:.1f}% importance). 
+        Longer bars = more weight in decision-making. The model learned from {len(X_train):,} historical data points 
+        to identify patterns. Higher importance means the AI relies more on that indicator.
+        """)
     
     with col2:
         st.subheader("Predictions vs Actual")
@@ -478,6 +558,15 @@ with tab3:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        accuracy_desc = "excellent" if r2 > 0.7 else "good" if r2 > 0.5 else "moderate" if r2 > 0.3 else "learning"
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        Each dot represents a prediction. Closer to the red line = more accurate. R² score of **{r2:.4f}** indicates 
+        **{accuracy_desc}** prediction accuracy. Perfect predictions would all sit on the red line. 
+        Scattered dots show the AI is learning patterns but can't predict perfectly (markets are complex!). 
+        The model was tested on {len(X_test):,} unseen data points.
+        """)
 
 with tab4:
     st.subheader("Strategy Performance")
@@ -500,6 +589,17 @@ with tab4:
     st.pyplot(fig)
     plt.close()
     
+    performance = "outperformed" if strategy_ret > market_ret else "underperformed"
+    performance_diff = abs(strategy_ret - market_ret)
+    sharpe_quality = "excellent" if sharpe > 1.5 else "good" if sharpe > 1 else "moderate" if sharpe > 0.5 else "poor"
+    st.info(f"""
+    **📊 What This Chart Shows:** 
+    Compares two strategies: Buy & Hold (red) vs our ML Strategy (green). Starting with $1, the ML strategy **{performance}** 
+    by **{performance_diff:.1f}%**. The ML strategy made **{total_trades}** trades with a **{win_rate:.1f}%** win rate. 
+    Sharpe Ratio of **{sharpe:.2f}** is **{sharpe_quality}** (measures risk-adjusted returns - higher is better). 
+    Steeper slope = faster gains. Gaps between lines show strategy effectiveness.
+    """)
+    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -514,6 +614,16 @@ with tab4:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        long_signals = len(df_test[df_test['Signal'] == 1])
+        short_signals = len(df_test[df_test['Signal'] == -1])
+        hold_days = len(df_test[df_test['Signal'] == 0])
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        Visual timeline of AI trading decisions. Green dots = Long (buy) signals (**{long_signals}** times), 
+        Red dots = Short (sell) signals (**{short_signals}** times), Gray dots = Hold (do nothing, **{hold_days}** days). 
+        The AI analyzes market conditions daily and decides the best action. Clustering of signals shows market trends.
+        """)
     
     with col2:
         st.subheader("Returns Comparison")
@@ -527,6 +637,17 @@ with tab4:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+        
+        strategy_std = df_test['Strat_Returns'].std() * 100
+        market_std = df_test['Returns'].std() * 100
+        risk_comparison = "lower" if strategy_std < market_std else "higher"
+        st.info(f"""
+        **📊 What This Chart Shows:** 
+        Distribution of daily returns. Red = buy & hold returns, Green = strategy returns. 
+        The white line at zero separates gains from losses. Strategy shows **{risk_comparison}** volatility 
+        ({strategy_std:.2f}% vs {market_std:.2f}% for market). Taller peaks around zero = more consistent returns. 
+        Wider spread = more risk. The goal is shifting distribution right (more gains) while reducing extreme losses.
+        """)
 
 # Footer
 st.markdown("---")
