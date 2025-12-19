@@ -299,57 +299,43 @@ latest = df.iloc[-1]
 current_signal = 1 if latest[f'MA_{ma_short}'] > latest[f'MA_{ma_long}'] else -1
 
 # =========================
-# AI RECOMMENDATIONS SECTION
+# AI RECOMMENDATIONS & METRICS - COMPACT
 # =========================
-st.markdown("---")
-st.header("🤖 AI Trading Recommendations")
-st.markdown("*Easy-to-understand insights based on advanced analysis*")
-
 ai_insights = generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_rate, current_signal)
 
-# Action Banner - Compact Button Style
+# Compact single row with action button and key metrics
+col1, col2, col3, col4, col5, col6 = st.columns([1.5, 1, 1, 1, 1, 1])
+
 action_colors = {
-    'BUY': ('background: linear-gradient(135deg, #10b981, #059669);', '🟢'),
-    'SELL': ('background: linear-gradient(135deg, #ef4444, #dc2626);', '🔴'),
-    'HOLD': ('background: linear-gradient(135deg, #f59e0b, #d97706);', '🟡')
+    'BUY': ('linear-gradient(135deg, #10b981, #059669)', '🟢'),
+    'SELL': ('linear-gradient(135deg, #ef4444, #dc2626)', '🔴'),
+    'HOLD': ('linear-gradient(135deg, #f59e0b, #d97706)', '🟡')
 }
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+with col1:
     st.markdown(f"""
-    <div style='{action_colors[ai_insights["action"]][0]} color: white; padding: 20px 40px; border-radius: 12px; text-align: center; margin: 10px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s;'>
-        <h2 style='margin: 0; font-size: 2em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h2>
-        <p style='margin: 8px 0 0 0; font-size: 0.95em; opacity: 0.95;'>Confidence: {ai_insights['confidence']:.0f}% • Risk: {ai_insights['risk_level']}</p>
+    <div style='background: {action_colors[ai_insights["action"]][0]}; color: white; padding: 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+        <h3 style='margin: 0; font-size: 1.3em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h3>
+        <p style='margin: 4px 0 0 0; font-size: 0.75em;'>Confidence: {ai_insights['confidence']:.0f}% • {ai_insights['risk_level']} Risk</p>
     </div>
     """, unsafe_allow_html=True)
 
-# Key Insights
-col1, col2 = st.columns([2, 1])
+prev = df.iloc[-2]
+with col2:
+    st.metric("💰 Price", f"${latest['Close']:,.0f}", f"{(latest['Close']-prev['Close'])/prev['Close']*100:+.2f}%")
+with col3:
+    st.metric("📈 RSI", f"{latest['RSI']:.0f}", "OB" if latest['RSI']>70 else "OS" if latest['RSI']<30 else "OK")
+with col4:
+    st.metric("💹 Vol", f"{latest['Volatility_7']*100:.1f}%")
+with col5:
+    st.metric("🚀 Strat", f"{strategy_ret:.1f}%", f"{strategy_ret-market_ret:+.1f}%")
+with col6:
+    st.metric("✅ Win", f"{win_rate:.0f}%")
 
-with col1:
-    st.subheader("📋 Key Insights & Recommendations")
+# Collapsible insights
+with st.expander("📋 View Detailed AI Insights & Recommendations"):
     for rec in ai_insights['recommendations']:
         st.markdown(f"- {rec}")
-
-with col2:
-    st.subheader("📊 Quick Stats")
-    st.metric("Current Price", f"${latest['Close']:,.0f}")
-    st.metric("30-Day Change", f"{((latest['Close'] - df['Close'].iloc[-30])/df['Close'].iloc[-30]*100):+.1f}%")
-    st.metric("Strategy vs Market", f"{strategy_ret - market_ret:+.1f}%", 
-              "Outperforming" if strategy_ret > market_ret else "Underperforming")
-
-st.markdown("---")
-
-# =========================
-# Key Metrics Row
-# =========================
-col1, col2, col3, col4 = st.columns(4)
-prev = df.iloc[-2]
-
-col1.metric("💰 BTC Price", f"${latest['Close']:,.0f}", f"{(latest['Close']-prev['Close'])/prev['Close']*100:+.2f}%")
-col2.metric("📈 RSI", f"{latest['RSI']:.1f}", "Overbought" if latest['RSI']>70 else "Oversold" if latest['RSI']<30 else "Neutral")
-col3.metric("💹 Volatility", f"{latest['Volatility_7']*100:.2f}%")
-col4.metric("🎯 Signal", "🟢 Bullish" if current_signal == 1 else "🔴 Bearish")
 
 st.markdown("---")
 
