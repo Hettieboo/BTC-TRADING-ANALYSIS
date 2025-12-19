@@ -303,8 +303,29 @@ current_signal = 1 if latest[f'MA_{ma_short}'] > latest[f'MA_{ma_long}'] else -1
 # =========================
 ai_insights = generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_rate, current_signal)
 
+# Add custom CSS to make metrics more compact
+st.markdown("""
+<style>
+    div[data-testid="metric-container"] {
+        background-color: rgba(138, 92, 246, 0.1);
+        border: 1px solid rgba(138, 92, 246, 0.2);
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+    div[data-testid="metric-container"] > label {
+        font-size: 0.85rem !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.1rem !important;
+    }
+    div[data-testid="stMetricDelta"] {
+        font-size: 0.75rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Compact single row with action button and key metrics
-col1, col2, col3, col4, col5, col6 = st.columns([1.5, 1, 1, 1, 1, 1])
+col1, col2, col3, col4, col5, col6 = st.columns([1.5, 1.2, 1, 1, 1.2, 1])
 
 action_colors = {
     'BUY': ('linear-gradient(135deg, #10b981, #059669)', '🟢'),
@@ -314,15 +335,15 @@ action_colors = {
 
 with col1:
     st.markdown(f"""
-    <div style='background: {action_colors[ai_insights["action"]][0]}; color: white; padding: 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-        <h3 style='margin: 0; font-size: 1.3em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h3>
-        <p style='margin: 4px 0 0 0; font-size: 0.75em;'>Confidence: {ai_insights['confidence']:.0f}% • {ai_insights['risk_level']} Risk</p>
+    <div style='background: {action_colors[ai_insights["action"]][0]}; color: white; padding: 10px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+        <h3 style='margin: 0; font-size: 1.2em;'>{action_colors[ai_insights["action"]][1]} {ai_insights['action']}</h3>
+        <p style='margin: 3px 0 0 0; font-size: 0.7em;'>Conf: {ai_insights['confidence']:.0f}% • {ai_insights['risk_level']} Risk</p>
     </div>
     """, unsafe_allow_html=True)
 
 prev = df.iloc[-2]
 with col2:
-    st.metric("💰 Price", f"${latest['Close']:,.0f}", f"{(latest['Close']-prev['Close'])/prev['Close']*100:+.2f}%")
+    st.metric("💰 Price", f"${latest['Close']:,.0f}", f"{(latest['Close']-prev['Close'])/prev['Close']*100:+.1f}%")
 with col3:
     st.metric("📈 RSI", f"{latest['RSI']:.0f}", "OB" if latest['RSI']>70 else "OS" if latest['RSI']<30 else "OK")
 with col4:
