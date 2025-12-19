@@ -1,4 +1,3 @@
-# BTC-TRADING-ANALYSIS
 # Bitcoin Algorithmic Trading Strategy
 ## Advanced Statistical Analysis & Predictive Modeling
 
@@ -155,20 +154,68 @@ Compared strategy against buy-and-hold benchmark:
 ## 📈 Key Results
 
 ### Statistical Findings
-1. **Non-Normal Distribution**: Bitcoin returns exhibit significant fat tails and are not normally distributed (reject normality hypothesis)
-2. **Stationarity**: Price series is non-stationary; returns series is stationary (suitable for modeling)
-3. **Positive Drift**: Mean daily return is statistically significant and positive over the analysis period
-4. **Autocorrelation**: Evidence of weak autocorrelation in returns, suggesting potential predictability
+
+**1. Distribution Analysis**
+- **Mean Daily Return**: 0.203% (51.11% annualized)
+- **Volatility**: 3.36% daily (53.37% annualized) 
+- **Skewness**: -0.52 (negative skew indicates more extreme downside moves)
+- **Kurtosis**: 11.13 (fat tails - extreme events occur more frequently than normal distribution)
+- **Shapiro-Wilk Test**: p-value < 0.001 → **Reject normality** (returns are NOT normally distributed)
+
+**2. Stationarity Tests (Augmented Dickey-Fuller)**
+- **Price Series**: ADF = -0.24, p-value = 0.93 → **Non-stationary**
+- **Returns Series**: ADF = -13.86, p-value < 0.001 → **Stationary** ✓
+- **Interpretation**: Returns are suitable for time series modeling; differencing successfully removes trend
+
+**3. Hypothesis Tests**
+- **Mean Return vs Zero**: t-statistic = 2.57, p-value = 0.010 → Mean return is **statistically significant**
+- **Ljung-Box Autocorrelation**: Test statistic = 27.45, p-value = 0.002 → Evidence of **autocorrelation** in returns
+- **Sharpe Ratio**: 0.96 (annualized) - positive risk-adjusted returns during period
+
+**4. Time Series Model**
+- **ARIMA(1,0,1)**: AIC = -7161.00, BIC = -7138.99
+- Model captures some temporal dependencies in return series
 
 ### Model Performance
-- **Best Model**: Random Forest Regressor
-- **Test R²**: ~0.02-0.05 (typical for daily return prediction in efficient markets)
-- **Important Features**: Recent returns, volatility measures, and RSI most predictive
 
-### Trading Strategy
-- **Strategy Return**: Outperformed buy-and-hold in backtesting period
-- **Sharpe Ratio**: Improved risk-adjusted returns
-- **Practical Considerations**: Results are theoretical; real-world implementation would face transaction costs, slippage, and execution risk
+| Model | Train R² | Test R² | Test RMSE | Test MAE |
+|-------|----------|---------|-----------|----------|
+| Linear Regression | 0.0077 | -0.0450 | 0.0287 | 0.0207 |
+| Ridge Regression | 0.0077 | -0.0449 | 0.0287 | 0.0207 |
+| Lasso Regression | 0.0033 | -0.0069 | 0.0281 | 0.0204 |
+| Random Forest | 0.8509 | -0.3614 | 0.0327 | 0.0247 |
+
+**Key Findings:**
+- **Negative Test R²**: All models show negative out-of-sample R², indicating predictions are worse than simply predicting the mean
+- **Overfitting in Random Forest**: High train R² (0.85) but very poor test performance (-0.36) indicates severe overfitting
+- **Best Performer**: Lasso Regression (least negative test R²), suggesting simpler models generalize better
+- **Market Efficiency**: Results support the semi-strong form of market efficiency - technical indicators alone provide limited predictive power for daily returns
+
+### Trading Strategy Performance
+
+**Backtest Results (Test Period: 2024)**
+- **Buy & Hold Return**: +141.54%
+- **Strategy Return**: -76.77%
+- **Underperformance**: -218.31%
+- **Win Rate**: 43.95% (149 wins / 339 trades)
+- **Strategy Sharpe Ratio**: -2.20 (negative risk-adjusted returns)
+- **Maximum Drawdown**: -79.17%
+
+**Critical Analysis:**
+The strategy significantly underperformed buy-and-hold, which provides important lessons:
+
+1. **Model Limitations**: Negative test R² translated directly to poor trading performance
+2. **Transaction Costs Not Included**: Real performance would be even worse with fees (typically 0.1-0.5% per trade × 339 trades)
+3. **Overfitting Risk**: Models that look good on paper often fail in live trading
+4. **Market Context**: 2024 saw strong BTC performance; simple buy-and-hold was hard to beat
+5. **Threshold Issues**: 0.05% prediction threshold may have been too aggressive given model accuracy
+
+**What This Demonstrates:**
+- Honest evaluation without cherry-picking results
+- Understanding that low R² is common in financial prediction
+- Recognition of the challenges in beating market returns
+- Proper interpretation of statistical vs. practical significance
+- Realistic assessment of model limitations
 
 ---
 
@@ -281,27 +328,49 @@ yfinance>=0.2.0
 
 ### Statistical Perspective
 The analysis confirms several well-documented characteristics of cryptocurrency returns:
-- **Fat tails**: Extreme events occur more frequently than normal distribution predicts
-- **Volatility clustering**: High volatility periods tend to persist
-- **Weak form efficiency**: Some predictability exists, though exploiting it is challenging
+- **Fat tails**: Kurtosis of 11.13 shows extreme events occur far more frequently than normal distribution predicts
+- **Negative skewness**: -0.52 indicates downside moves tend to be more extreme than upside moves
+- **Volatility clustering**: High volatility periods tend to persist (confirmed by significant autocorrelation)
+- **Market efficiency**: Negative test R² across all models supports the difficulty of predicting returns using only historical price data
+
+### Why The Models Failed
+This project demonstrates a crucial lesson in quantitative finance:
+
+**Statistical Significance ≠ Practical Profitability**
+- While we found statistically significant autocorrelation (p = 0.002), this wasn't strong enough to generate profitable trading signals
+- The mean return was significantly positive (p = 0.01), but predicting *which days* would be positive proved extremely difficult
+- Technical indicators capture some market dynamics but lack predictive power for next-day returns
+
+**Overfitting vs Generalization**
+- Random Forest achieved 85% train R² by memorizing training patterns
+- This completely failed on new data (test R² = -0.36)
+- Simpler models (Linear, Ridge, Lasso) performed better out-of-sample, though still poorly
+- This is why proper validation and honest evaluation are critical
+
+### What Success Would Look Like
+For context, in quantitative finance:
+- **Test R² > 0.01** for daily returns is considered meaningful
+- **Sharpe Ratio > 1.0** indicates decent risk-adjusted returns
+- **Win Rate > 50%** with proper position sizing can be profitable
+- Our results fell short on all metrics, which is honest and expected for a simple approach
 
 ### Practical Trading Implications
-1. **Risk Management is Critical**: High volatility and fat tails make position sizing crucial
-2. **Transaction Costs Matter**: Small edge can be eliminated by fees and slippage
-3. **Regime Changes**: Models trained on one period may fail in different market conditions
-4. **Model Uncertainty**: Low R² is expected; financial markets are inherently noisy
+1. **Transaction Costs Matter**: 339 trades × 0.2% fees = 68% lost to fees alone
+2. **Market Timing is Hard**: Even with perfect 2020-2024 hindsight, beating buy-and-hold is challenging
+3. **Regime Sensitivity**: Models trained on one period often fail when market dynamics change
+4. **Feature Limitations**: Price-based features may need augmentation with sentiment, on-chain metrics, or macro data
 
 ### Academic Rigor
 This project demonstrates:
-- Proper experimental design with temporal data
-- Multiple hypothesis testing with appropriate corrections
-- Model validation without data leakage
-- Honest assessment of limitations
-- Statistical reasoning throughout analysis
+- **Honest reporting**: Publishing negative results shows integrity
+- **Proper methodology**: Time series splits, no data leakage, multiple model comparison
+- **Critical thinking**: Understanding *why* results are poor is as valuable as good results
+- **Real-world awareness**: Acknowledging that 141% buy-and-hold return would be hard to beat
+- **Statistical literacy**: Distinguishing between statistical significance and practical importance
 
 ---
 
-## Value
+## 🎓 Educational Value
 
 This project showcases proficiency in:
 - **Applied Statistics**: Hypothesis testing, time series analysis, probability theory
@@ -314,9 +383,14 @@ This project showcases proficiency in:
 
 ## 📧 Contact
 
-**Author**: [Henrietta Atsenokhai]  
-**Email**: [henrietta.atsenokhai@gmail.com]  
+**Author**: Henrietta Atsenokhai  
+**Email**: henrietta.atsenokhai@gmail.com  
+**Phone**: +33 7 58 75 06 82  
+**LinkedIn**: [www.linkedin.com/in/henrietta-a-19810b280](https://www.linkedin.com/in/henrietta-a-19810b280)  
+**GitHub**: [https://github.com/Hettieb](https://github.com/Hettieb)  
+**Location**: Neuilly Sur-Marne, Île-de-France, France
 
+---
 
 ## 📄 License
 
