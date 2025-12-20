@@ -1,409 +1,422 @@
-# Bitcoin Algorithmic Trading Strategy
-## Advanced Statistical Analysis & Predictive Modeling
+# ⚡ BTC AI Trading Dashboard
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+An advanced algorithmic trading dashboard for Bitcoin using Machine Learning and technical analysis. Built with Streamlit, this interactive application provides real-time trading signals, performance analytics, and AI-powered insights.
 
----
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## 📋 Project Overview
+## 🌟 Features
 
-This project demonstrates advanced statistical analysis and machine learning techniques applied to cryptocurrency trading. Using Bitcoin (BTC-USD) historical price data from 2020-2024, I develop and backtest a predictive trading strategy that leverages time series analysis, hypothesis testing, and multiple machine learning models.
+### 📊 Real-Time Data
+- **Live Bitcoin prices** from Yahoo Finance (BTC-USD)
+- **Demo mode** with synthetic data for testing
+- Automatic data refresh capability
+- Historical data spanning 1500+ days
 
-**Key Objectives:**
-- Apply rigorous statistical methods to financial time series data
-- Develop and compare multiple predictive models
-- Implement a backtested trading strategy with proper evaluation metrics
-- Demonstrate proficiency in statistical modeling, hypothesis testing, and experimental design
+### 🤖 Machine Learning Models
+- **Random Forest Regressor**
+- **Gradient Boosting Regressor**
+- **XGBoost** (optional, requires installation)
+- Customizable hyperparameters and training windows
+- Rolling performance evaluation
 
----
+### 📈 Technical Indicators
+- **Moving Averages** (MA7, MA30 - customizable)
+- **RSI** (Relative Strength Index)
+- **Bollinger Bands**
+- **Volatility Analysis** (7-day & 30-day)
+- **Momentum Indicators**
 
-## 🎯 Skills Demonstrated
+### 🎯 AI-Powered Recommendations
+- **Smart Trading Signals**: BUY, SELL, or HOLD with confidence levels
+- **Risk Assessment**: Low, Medium, or High risk ratings
+- **Contextual Insights**: Explains market conditions in plain English
+- **Performance Comparison**: Strategy vs Buy-and-Hold
 
-### Statistical Methods
-- **Descriptive Statistics**: Mean, variance, skewness, kurtosis, Sharpe ratio
-- **Hypothesis Testing**: Shapiro-Wilk normality test, one-sample t-test, Ljung-Box autocorrelation test
-- **Time Series Analysis**: Augmented Dickey-Fuller stationarity test, ARIMA modeling, ACF/PACF analysis
-- **Experimental Design**: Proper train-test splitting for temporal data, model comparison framework
+### 📉 Comprehensive Analytics
+- **4 Interactive Tabs**:
+  1. **Overview**: Price charts, volume, returns distribution
+  2. **Signals**: RSI, Bollinger Bands, volatility analysis
+  3. **ML Model**: Feature importance, predictions accuracy, rolling R²
+  4. **Performance**: Cumulative returns, drawdown analysis, win rate metrics
 
-### Machine Learning
-- **Models**: Linear Regression, Ridge Regression, Lasso Regression, Random Forest
-- **Validation**: Time series cross-validation, proper temporal splitting
-- **Evaluation**: R², RMSE, MAE, feature importance analysis
-- **Feature Engineering**: Technical indicators (RSI, moving averages, volatility, momentum)
-
-### Tools & Libraries
-- **Data Processing**: Pandas, NumPy
-- **Statistics**: SciPy, Statsmodels
-- **Machine Learning**: Scikit-learn
-- **Visualization**: Matplotlib, Seaborn
-
----
-
-## 📊 Methodology
-
-### 1. Data Acquisition
-- **Source**: Yahoo Finance (yfinance API)
-- **Asset**: Bitcoin (BTC-USD)
-- **Period**: January 2020 - December 2024
-- **Frequency**: Daily OHLCV (Open, High, Low, Close, Volume)
-
-### 2. Exploratory Data Analysis
-- Summary statistics and distribution analysis
-- Returns calculation (simple and logarithmic)
-- Volatility assessment
-- Visual inspection of price trends and patterns
-
-### 3. Statistical Hypothesis Testing
-
-#### Test 1: Normality of Returns
-- **Method**: Shapiro-Wilk test
-- **Hypothesis**: H₀: Returns follow a normal distribution
-- **Result**: Rejected (p < 0.05)
-- **Interpretation**: Returns exhibit fat tails and are not normally distributed, consistent with financial asset behavior
-
-#### Test 2: Mean Return Significance
-- **Method**: One-sample t-test
-- **Hypothesis**: H₀: Mean daily return = 0
-- **Result**: Statistical significance indicates positive drift in BTC prices
-
-#### Test 3: Autocorrelation
-- **Method**: Ljung-Box test
-- **Hypothesis**: H₀: No autocorrelation in returns
-- **Interpretation**: Tests for predictable patterns in return series
-
-### 4. Time Series Analysis
-
-#### Stationarity Testing
-- **Price Series**: Non-stationary (p-value > 0.05)
-- **Returns Series**: Stationary (p-value < 0.05)
-- **Implication**: Returns are suitable for modeling; differencing transforms non-stationary price to stationary returns
-
-#### ARIMA Modeling
-- Fitted ARIMA(1,0,1) model to returns
-- Evaluated using AIC and BIC information criteria
-- ACF/PACF analysis for order selection
-
-### 5. Feature Engineering
-
-Created technical indicators commonly used in quantitative trading:
-
-**Trend Indicators:**
-- Moving Averages (7-day, 30-day, 90-day)
-- Momentum (7-day, 30-day price changes)
-
-**Volatility Indicators:**
-- Rolling standard deviation (7-day, 30-day)
-- Volatility clustering analysis
-
-**Momentum Oscillators:**
-- Relative Strength Index (RSI)
-- Volume ratios
-
-**Lag Features:**
-- Historical returns (1, 2, 3, 5, 7 days)
-
-### 6. Predictive Modeling
-
-#### Model Comparison
-Trained and evaluated four regression models:
-
-1. **Linear Regression** (baseline)
-2. **Ridge Regression** (L2 regularization)
-3. **Lasso Regression** (L1 regularization, feature selection)
-4. **Random Forest** (non-linear, ensemble method)
-
-#### Validation Strategy
-- **80/20 temporal split** (no data leakage from future to past)
-- Standardized features using training set parameters
-- Evaluated on held-out test set
-
-#### Performance Metrics
-- R² Score (coefficient of determination)
-- RMSE (root mean squared error)
-- MAE (mean absolute error)
-- Feature importance rankings
-
-**Key Finding**: Random Forest achieved the best out-of-sample performance, capturing non-linear relationships between technical indicators and future returns.
-
-### 7. Trading Strategy Backtesting
-
-#### Strategy Design
-- **Signal Generation**: Predicted returns from best-performing model (Random Forest)
-- **Position**: Long when predicted return > threshold, Short when < -threshold, Neutral otherwise
-- **Threshold**: 0.05% to filter noise and reduce transaction frequency
-
-#### Performance Evaluation
-Compared strategy against buy-and-hold benchmark:
-
-**Metrics Calculated:**
-- Total return
-- Annualized volatility
-- Sharpe ratio (risk-adjusted return)
-- Maximum drawdown
-- Win rate
-- Number of trades
-
-**Risk Considerations:**
-- No transaction costs included (conservative estimate)
-- No slippage modeling
-- Assumes perfect execution at close prices
+### 🎨 User Experience
+- **Dark mode interface** with custom styling
+- **Responsive layout** optimized for all screen sizes
+- **Interactive tooltips** explaining each control
+- **Collapsible sections** with AI-powered explanations
+- **Real-time metrics** with visual indicators
 
 ---
 
-## 📈 Key Results
-
-### Statistical Findings
-
-**1. Distribution Analysis**
-- **Mean Daily Return**: 0.203% (51.11% annualized)
-- **Volatility**: 3.36% daily (53.37% annualized) 
-- **Skewness**: -0.52 (negative skew indicates more extreme downside moves)
-- **Kurtosis**: 11.13 (fat tails - extreme events occur more frequently than normal distribution)
-- **Shapiro-Wilk Test**: p-value < 0.001 → **Reject normality** (returns are NOT normally distributed)
-
-**2. Stationarity Tests (Augmented Dickey-Fuller)**
-- **Price Series**: ADF = -0.24, p-value = 0.93 → **Non-stationary**
-- **Returns Series**: ADF = -13.86, p-value < 0.001 → **Stationary** ✓
-- **Interpretation**: Returns are suitable for time series modeling; differencing successfully removes trend
-
-**3. Hypothesis Tests**
-- **Mean Return vs Zero**: t-statistic = 2.57, p-value = 0.010 → Mean return is **statistically significant**
-- **Ljung-Box Autocorrelation**: Test statistic = 27.45, p-value = 0.002 → Evidence of **autocorrelation** in returns
-- **Sharpe Ratio**: 0.96 (annualized) - positive risk-adjusted returns during period
-
-**4. Time Series Model**
-- **ARIMA(1,0,1)**: AIC = -7161.00, BIC = -7138.99
-- Model captures some temporal dependencies in return series
-
-### Model Performance
-
-| Model | Train R² | Test R² | Test RMSE | Test MAE |
-|-------|----------|---------|-----------|----------|
-| Linear Regression | 0.0077 | -0.0450 | 0.0287 | 0.0207 |
-| Ridge Regression | 0.0077 | -0.0449 | 0.0287 | 0.0207 |
-| Lasso Regression | 0.0033 | -0.0069 | 0.0281 | 0.0204 |
-| Random Forest | 0.8509 | -0.3614 | 0.0327 | 0.0247 |
-
-**Key Findings:**
-- **Negative Test R²**: All models show negative out-of-sample R², indicating predictions are worse than simply predicting the mean
-- **Overfitting in Random Forest**: High train R² (0.85) but very poor test performance (-0.36) indicates severe overfitting
-- **Best Performer**: Lasso Regression (least negative test R²), suggesting simpler models generalize better
-- **Market Efficiency**: Results support the semi-strong form of market efficiency - technical indicators alone provide limited predictive power for daily returns
-
-### Trading Strategy Performance
-
-**Backtest Results (Test Period: 2024)**
-- **Buy & Hold Return**: +141.54%
-- **Strategy Return**: -76.77%
-- **Underperformance**: -218.31%
-- **Win Rate**: 43.95% (149 wins / 339 trades)
-- **Strategy Sharpe Ratio**: -2.20 (negative risk-adjusted returns)
-- **Maximum Drawdown**: -79.17%
-
-**Critical Analysis:**
-The strategy significantly underperformed buy-and-hold, which provides important lessons:
-
-1. **Model Limitations**: Negative test R² translated directly to poor trading performance
-2. **Transaction Costs Not Included**: Real performance would be even worse with fees (typically 0.1-0.5% per trade × 339 trades)
-3. **Overfitting Risk**: Models that look good on paper often fail in live trading
-4. **Market Context**: 2024 saw strong BTC performance; simple buy-and-hold was hard to beat
-5. **Threshold Issues**: 0.05% prediction threshold may have been too aggressive given model accuracy
-
-**What This Demonstrates:**
-- Honest evaluation without cherry-picking results
-- Understanding that low R² is common in financial prediction
-- Recognition of the challenges in beating market returns
-- Proper interpretation of statistical vs. practical significance
-- Realistic assessment of model limitations
-
----
-
-## 🔍 Assumptions & Limitations
-
-### Assumptions
-1. Markets are not perfectly efficient; historical patterns contain predictive information
-2. Technical indicators capture relevant market dynamics
-3. Training period patterns persist into test period
-4. Price data is accurate and free from survivorship bias
-
-### Limitations
-1. **Look-Ahead Bias**: Carefully avoided by using only historical data for predictions
-2. **Transaction Costs**: Not included in backtest (reduces real returns)
-3. **Sample Period**: Limited to 2020-2024; may not generalize to different market regimes
-4. **Model Risk**: Past performance does not guarantee future results
-5. **Overfitting**: Mitigated through cross-validation but remains a risk
-6. **Market Impact**: Assumes small position sizes with no price impact
-
----
-
-## 🚀 Future Improvements
-
-### Model Enhancements
-- **Deep Learning**: LSTM networks for sequence modeling
-- **Ensemble Methods**: Combine multiple models with different strengths
-- **Alternative Data**: Incorporate sentiment analysis, on-chain metrics, macroeconomic indicators
-
-### Strategy Refinements
-- **Position Sizing**: Kelly criterion or risk parity approach
-- **Risk Management**: Dynamic stop-loss, trailing stops, portfolio diversification
-- **Transaction Cost Model**: Realistic fee structure and slippage assumptions
-- **Regime Detection**: Separate models for bull/bear/sideways markets
-
-### Statistical Rigor
-- **Bayesian Methods**: Posterior distributions for parameter uncertainty
-- **Monte Carlo Simulation**: Stress testing under various scenarios
-- **Walk-Forward Analysis**: Rolling window optimization and out-of-sample testing
-
----
-
-## 📁 Project Structure
-
-```
-btc-trading-analysis/
-│
-├── README.md                          # This file
-├── btc_trading_analysis.ipynb         # Main analysis notebook
-├── requirements.txt                   # Python dependencies
-│
-├── outputs/
-│   ├── btc_eda_analysis.png          # EDA visualizations
-│   └── btc_ml_strategy.png           # Model and strategy results
-│
-└── data/
-    └── BTC-USD.csv                    # Historical price data (if using CSV)
-```
-
----
-
-## 🛠️ Installation & Usage
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- Jupyter Notebook or JupyterLab
+- Python 3.8 or higher
+- pip package manager
 
-### Setup
+### Installation
 
-1. **Clone or download the project**
-```bash
-git clone <repository-url>
-cd btc-trading-analysis
-```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/btc-ai-dashboard.git
+   cd btc-ai-dashboard
+   ```
 
 2. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. **Run the analysis**
-```bash
-jupyter notebook btc_trading_analysis.ipynb
-```
+3. **Run the application**
+   ```bash
+   streamlit run app.py
+   ```
 
-The notebook will automatically:
-- Download BTC price data via yfinance
-- Perform all statistical analyses
-- Train and evaluate models
-- Generate visualizations
-- Save output charts
+4. **Open in browser**
+   - The app will automatically open at `http://localhost:8501`
 
 ---
 
-## 📦 Dependencies
+## 📦 Requirements
 
-```
-pandas>=1.5.0
-numpy>=1.23.0
-matplotlib>=3.6.0
+Create a `requirements.txt` file with:
+
+```txt
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
 seaborn>=0.12.0
-statsmodels>=0.14.0
-scipy>=1.9.0
-scikit-learn>=1.2.0
-yfinance>=0.2.0
+scikit-learn>=1.3.0
+yfinance>=0.2.28
+xgboost>=2.0.0
 ```
 
 ---
 
-## 📝 Interpretation & Insights
+## 🎛️ Configuration
 
-### Statistical Perspective
-The analysis confirms several well-documented characteristics of cryptocurrency returns:
-- **Fat tails**: Kurtosis of 11.13 shows extreme events occur far more frequently than normal distribution predicts
-- **Negative skewness**: -0.52 indicates downside moves tend to be more extreme than upside moves
-- **Volatility clustering**: High volatility periods tend to persist (confirmed by significant autocorrelation)
-- **Market efficiency**: Negative test R² across all models supports the difficulty of predicting returns using only historical price data
+### Sidebar Controls
 
-### Why The Models Failed
-This project demonstrates a crucial lesson in quantitative finance:
+#### Strategy Parameters
+- **Use Live Data**: Toggle between real Yahoo Finance data and synthetic demo data
+- **Short MA** (5-30 days): Short-term moving average period
+- **Long MA** (30-120 days): Long-term moving average period
+- **RSI Period** (7-28 days): Period for calculating momentum
+- **Threshold** (0-1%): Minimum predicted return to trigger signals
 
-**Statistical Significance ≠ Practical Profitability**
-- While we found statistically significant autocorrelation (p = 0.002), this wasn't strong enough to generate profitable trading signals
-- The mean return was significantly positive (p = 0.01), but predicting *which days* would be positive proved extremely difficult
-- Technical indicators capture some market dynamics but lack predictive power for next-day returns
-
-**Overfitting vs Generalization**
-- Random Forest achieved 85% train R² by memorizing training patterns
-- This completely failed on new data (test R² = -0.36)
-- Simpler models (Linear, Ridge, Lasso) performed better out-of-sample, though still poorly
-- This is why proper validation and honest evaluation are critical
-
-### What Success Would Look Like
-For context, in quantitative finance:
-- **Test R² > 0.01** for daily returns is considered meaningful
-- **Sharpe Ratio > 1.0** indicates decent risk-adjusted returns
-- **Win Rate > 50%** with proper position sizing can be profitable
-- Our results fell short on all metrics, which is honest and expected for a simple approach
-
-### Practical Trading Implications
-1. **Transaction Costs Matter**: 339 trades × 0.2% fees = 68% lost to fees alone
-2. **Market Timing is Hard**: Even with perfect 2020-2024 hindsight, beating buy-and-hold is challenging
-3. **Regime Sensitivity**: Models trained on one period often fail when market dynamics change
-4. **Feature Limitations**: Price-based features may need augmentation with sentiment, on-chain metrics, or macro data
-
-### Academic Rigor
-This project demonstrates:
-- **Honest reporting**: Publishing negative results shows integrity
-- **Proper methodology**: Time series splits, no data leakage, multiple model comparison
-- **Critical thinking**: Understanding *why* results are poor is as valuable as good results
-- **Real-world awareness**: Acknowledging that 141% buy-and-hold return would be hard to beat
-- **Statistical literacy**: Distinguishing between statistical significance and practical importance
+#### Model Configuration
+- **ML Model**: Choose between Random Forest, Gradient Boosting, or XGBoost
+- **Test Size** (10-40%): Percentage of data reserved for testing
+- **Retrain Window** (100-500 days): Number of recent days used for training
 
 ---
 
-## 🎓 Educational Value
+## 📊 Understanding the Metrics
 
-This project showcases proficiency in:
-- **Applied Statistics**: Hypothesis testing, time series analysis, probability theory
-- **Machine Learning**: Supervised learning, model evaluation, feature engineering
-- **Financial Econometrics**: Return calculations, risk metrics, backtesting methodology
-- **Python Programming**: Pandas, NumPy, Scikit-learn, Statsmodels
-- **Scientific Communication**: Clear documentation, visualization, interpretation
+### Top-Level Metrics
+- **Action Signal**: BUY/SELL/HOLD recommendation with confidence percentage
+- **Price**: Current Bitcoin price with daily change
+- **RSI**: Momentum indicator (OB=Overbought, OS=Oversold, OK=Neutral)
+- **Vol**: 7-day volatility percentage
+- **Strat**: Strategy return vs market benchmark
+- **Win**: Percentage of profitable trades
 
----
-
-## 📧 Contact
-
-**Author**: Henrietta Atsenokhai  
-**Email**: henrietta.atsenokhai@gmail.com  
-**Phone**: +33 7 58 75 06 82  
-**LinkedIn**: [www.linkedin.com/in/henrietta-a-19810b280](https://www.linkedin.com/in/henrietta-a-19810b280)  
-**GitHub**: [https://github.com/Hettieb](https://github.com/Hettieb)  
-**Location**: Neuilly Sur-Marne, Île-de-France, France
+### Performance Metrics
+- **Total Return**: Cumulative percentage gain/loss
+- **Sharpe Ratio**: Risk-adjusted return measure (>1 is good, >2 is excellent)
+- **Win Rate**: Percentage of winning trades
+- **Max Drawdown**: Largest peak-to-trough decline
+- **Volatility**: Annualized standard deviation of returns
 
 ---
 
-## 📄 License
+## 🧠 How It Works
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### 1. Data Collection
+- Fetches historical Bitcoin price data (OHLCV)
+- Calculates technical indicators and features
+- Splits data into training and testing sets
+
+### 2. Feature Engineering
+The model uses 11 features:
+- Moving averages (short & long term)
+- MA difference (trend strength)
+- Volatility (7-day & 30-day)
+- Momentum (7-day & 14-day)
+- RSI (momentum oscillator)
+- Lagged returns (1, 2, 3 days)
+
+### 3. Model Training
+- Trains on recent data (configurable window)
+- Predicts next-day returns
+- Generates buy/sell signals based on threshold
+- Evaluates performance on test set
+
+### 4. Signal Generation
+- **BUY**: When predicted return > threshold
+- **SELL**: When predicted return < -threshold
+- **HOLD**: When predicted return is within threshold range
+
+### 5. Backtesting
+- Simulates trading the strategy on historical data
+- Compares against buy-and-hold benchmark
+- Calculates risk metrics and trade statistics
+
+---
+
+## 🎯 Trading Strategy
+
+### Current Strategy: **Momentum-Based**
+The dashboard uses a **momentum/trend-following** approach:
+- Waits for confirmation of trend direction
+- Uses MA crossovers and RSI for timing
+- Aims to ride trends while avoiding false signals
+
+### Characteristics
+✅ **Strengths**:
+- Works well in trending markets
+- Reduces whipsaw trades
+- Clear entry/exit rules
+
+❌ **Limitations**:
+- Misses exact bottoms/tops (waits for confirmation)
+- Struggles in sideways/choppy markets
+- Doesn't account for your personal entry price
+
+### Alternative Strategies
+The models can be adapted for:
+- **Mean Reversion**: Buy dips, sell rallies
+- **Breakout Trading**: Enter on volatility expansion
+- **Support/Resistance**: Trade at key price levels
+
+---
+
+## 📚 AI Insights Explained
+
+Each chart includes AI-powered analysis that explains:
+- **What the pattern means**: Interpretation of the visual data
+- **Current market conditions**: Bullish, bearish, or neutral
+- **What to watch for**: Key indicators of potential changes
+- **Trading implications**: How this affects decision-making
+
+Example insights:
+- "RSI at 72 (overbought) suggests potential reversal"
+- "Price near lower Bollinger Band may indicate oversold conditions"
+- "High volatility (6.2%) means expect large price swings"
+
+---
+
+## 🔒 Security & Privacy
+
+### Password Protection (Optional)
+The dashboard includes optional password protection:
+
+1. **Uncomment** in code:
+   ```python
+   if not check_password():
+       st.stop()
+   ```
+
+2. **Create** `.streamlit/secrets.toml`:
+   ```toml
+   password = "your_sha256_hash_here"
+   ```
+
+3. **Generate hash**:
+   ```python
+   import hashlib
+   password = "your_password"
+   hash_value = hashlib.sha256(password.encode()).hexdigest()
+   print(hash_value)
+   ```
+
+---
+
+## 🚀 Deployment
+
+### Streamlit Cloud
+
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git push origin main
+   ```
+
+2. **Deploy on Streamlit Cloud**
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub repository
+   - Select the main file (`app.py`)
+   - Click "Deploy"
+
+3. **Add Secrets** (if using password protection)
+   - In Streamlit Cloud dashboard
+   - Go to App Settings → Secrets
+   - Add your password hash
+
+---
+
+## ⚠️ Important Disclaimers
+
+### Educational Purpose Only
+This dashboard is designed for **educational and research purposes**. It is NOT:
+- ❌ Financial advice
+- ❌ Investment recommendation
+- ❌ Guaranteed to be profitable
+- ❌ A substitute for professional guidance
+
+### Risk Warning
+**Cryptocurrency trading involves substantial risk of loss.**
+- Past performance does not guarantee future results
+- ML models can be wrong
+- Market conditions change rapidly
+- Never invest more than you can afford to lose
+
+### No Guarantees
+- The models are probabilistic, not deterministic
+- Backtested performance may not reflect live trading
+- Technical analysis has limitations
+- Always do your own research (DYOR)
+
+---
+
+## 🤔 FAQ
+
+### Q: Why does the model say "HOLD" when price is low?
+**A:** The model uses a momentum strategy that waits for trend confirmation. It prioritizes avoiding "catching a falling knife" over buying at the absolute bottom. Low price doesn't automatically mean good entry - it looks for reversal signals.
+
+### Q: What's the difference between the ML models?
+**A:** All three are ensemble tree models with similar logic but different internal math:
+- **Random Forest**: Averages many independent decision trees
+- **Gradient Boosting**: Builds trees sequentially, learning from errors
+- **XGBoost**: Optimized gradient boosting with better performance
+
+### Q: Can I track my personal portfolio with this?
+**A:** No, this is a market timing tool, not a portfolio tracker. It shows strategy performance, not your personal P&L. You'd need to separately track your entry prices and position sizes.
+
+### Q: Why doesn't it use more advanced features?
+**A:** The dashboard balances sophistication with performance and interpretability. More complex features (sentiment analysis, on-chain metrics) would require additional data sources and processing time.
+
+### Q: How often should I retrain the model?
+**A:** The "Retrain Window" controls how much recent data to use. Shorter windows (100-200 days) adapt faster to new conditions but may overfit. Longer windows (300-500 days) are more stable but slower to adapt.
+
+---
+
+## 🛠️ Customization
+
+### Adding New Features
+Edit the `add_features()` function:
+```python
+def add_features(df, ma_short, ma_long, rsi_period):
+    # Add your custom technical indicators here
+    data['Your_Feature'] = calculate_something(df)
+    return data
+```
+
+### Changing Color Scheme
+Modify the CSS in the `st.markdown()` sections:
+```python
+st.markdown("""
+<style>
+    /* Your custom styles here */
+</style>
+""", unsafe_allow_html=True)
+```
+
+### Adding New Models
+Add to the model selection logic:
+```python
+if model_choice == "Your Model":
+    model = YourModelClass(params)
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### "XGBoost not installed" warning
+```bash
+pip install xgboost
+```
+
+### Charts not displaying
+- Clear Streamlit cache: `st.cache_data.clear()`
+- Restart the app
+- Check matplotlib backend
+
+### Live data not loading
+- Check internet connection
+- Verify Yahoo Finance is accessible
+- Try demo mode as fallback
+
+### CSS changes not appearing
+- Hard refresh: Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)
+- Clear browser cache
+- Try incognito/private mode
+
+---
+
+## 📈 Future Enhancements
+
+Potential features for future versions:
+- [ ] Multiple cryptocurrency support
+- [ ] Advanced ML models (LSTM, Transformer)
+- [ ] Sentiment analysis integration
+- [ ] Real-time alerts and notifications
+- [ ] Portfolio tracking module
+- [ ] Multi-timeframe analysis
+- [ ] Options pricing models
+- [ ] Risk management calculator
+- [ ] Export reports to PDF
+- [ ] API integration for automated trading
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👤 Author
+
+**Henrietta Atsenokhai**
+- Email: henrietta.atsenokhai@gmail.com
+
 
 ---
 
 ## 🙏 Acknowledgments
 
-- Data source: Yahoo Finance via yfinance library
-- Statistical methods: Statsmodels documentation
-- Inspiration: Quantitative finance literature and academic papers on market efficiency
+- Built with [Streamlit](https://streamlit.io/)
+- Data from [Yahoo Finance](https://finance.yahoo.com/)
+- ML models from [Scikit-learn](https://scikit-learn.org/)
+- Visualization with [Matplotlib](https://matplotlib.org/) & [Seaborn](https://seaborn.pydata.org/)
 
 ---
 
-**Disclaimer**: This project is for educational and demonstration purposes only. It does not constitute financial advice. Cryptocurrency trading carries substantial risk of loss. Past performance does not guarantee future results.
+## 📞 Support
+
+For questions, issues, or feedback:
+- Open an issue on GitHub
+- Email: henrietta.atsenokhai@gmail.com
+
+---
+
+**© 2025 Henrietta Atsenokhai. All rights reserved.**
+
+*Educational purposes only • Not financial advice*
