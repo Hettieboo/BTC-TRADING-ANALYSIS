@@ -202,19 +202,26 @@ st.markdown("### Advanced Algorithmic Trading with Machine Learning")
 # Sidebar
 # =========================
 st.sidebar.header("🎛️ Strategy Parameters")
-use_live_data = st.sidebar.checkbox("📡 Use Live Data (Yahoo Finance)", value=True)
+use_live_data = st.sidebar.checkbox("📡 Use Live Data (Yahoo Finance)", value=True, 
+                                     help="Fetch real-time Bitcoin data from Yahoo Finance")
 
-ma_short = st.sidebar.slider("Short MA", 5, 30, 7)
-ma_long = st.sidebar.slider("Long MA", 30, 120, 30)
-rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14)
-threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01) / 100
+ma_short = st.sidebar.slider("Short MA", 5, 30, 7, 
+                              help="Short-term moving average period in days")
+ma_long = st.sidebar.slider("Long MA", 30, 120, 30, 
+                             help="Long-term moving average period in days")
+rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14, 
+                                help="Period for calculating Relative Strength Index")
+threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01, 
+                               help="Minimum predicted return to trigger buy/sell signal") / 100
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Model Configuration")
-model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting", "XGBoost"])
-test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20) / 100
+model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting", "XGBoost"],
+                                     help="Machine learning algorithm for predictions")
+test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20, 
+                               help="Percentage of data reserved for testing") / 100
 retrain_window = st.sidebar.slider("Retrain Window (days)", 100, 500, 252, 
-                                     help="How much recent data to use for training")
+                                     help="Number of recent days used for model training")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
@@ -480,58 +487,54 @@ with tab1:
             """)
 
 with tab2:
-    col1, col2 = st.columns(2)
+    st.subheader("RSI Indicator")
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.plot(df.index[-200:], df['RSI'][-200:], linewidth=2, color='#8a5cf6')
+    ax.axhline(70, color='#ef4444', linestyle='--', linewidth=2, label='Overbought')
+    ax.axhline(30, color='#10b981', linestyle='--', linewidth=2, label='Oversold')
+    ax.fill_between(df.index[-200:], 70, 100, alpha=0.2, color='red')
+    ax.fill_between(df.index[-200:], 0, 30, alpha=0.2, color='green')
+    ax.set_ylim(0, 100)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
     
-    with col1:
-        st.subheader("RSI Indicator")
-        fig, ax = plt.subplots(figsize=(12, 5))
-        ax.plot(df.index[-200:], df['RSI'][-200:], linewidth=2, color='#8a5cf6')
-        ax.axhline(70, color='#ef4444', linestyle='--', linewidth=2, label='Overbought')
-        ax.axhline(30, color='#10b981', linestyle='--', linewidth=2, label='Oversold')
-        ax.fill_between(df.index[-200:], 70, 100, alpha=0.2, color='red')
-        ax.fill_between(df.index[-200:], 0, 30, alpha=0.2, color='green')
-        ax.set_ylim(0, 100)
-        ax.legend()
-        ax.grid(alpha=0.3)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        
-        rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
-        
-        with st.expander("📊 RSI Analysis (AI-Powered)"):
-            st.info(f"""
-            **RSI Reading:** Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
-            RSI measures momentum on a scale of 0-100. Above 70 (red zone) suggests overbought conditions—potential reversal down. 
-            Below 30 (green zone) indicates oversold—potential bounce up. 
-            RSI helps identify when price has moved too far too fast and may correct.
-            """)
+    rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
     
-    with col2:
-        st.subheader("Bollinger Bands")
-        fig, ax = plt.subplots(figsize=(12, 5))
-        ax.plot(df.index[-200:], df['Close'][-200:], label='Price', linewidth=2)
-        ax.plot(df.index[-200:], df['BB_Upper'][-200:], '--', color='#ef4444', label='Upper')
-        ax.plot(df.index[-200:], df['BB_Lower'][-200:], '--', color='#10b981', label='Lower')
-        ax.fill_between(df.index[-200:], df['BB_Lower'][-200:], df['BB_Upper'][-200:], alpha=0.2)
-        ax.legend()
-        ax.grid(alpha=0.3)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        
-        bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
-        bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
-        
-        with st.expander("📊 Bollinger Bands Analysis (AI-Powered)"):
-            st.info(f"""
-            **Band Position:** Price is currently **{bb_status}** ({bb_position:.0f}% position within bands). 
-            Bollinger Bands expand during high volatility and contract during calm periods. 
-            Price touching upper band (red) may signal overbought; touching lower band (green) suggests oversold. 
-            Price tends to bounce between bands—touching one band often leads to movement toward the other.
-            """)
+    with st.expander("📊 RSI Analysis (AI-Powered)"):
+        st.info(f"""
+        **RSI Reading:** Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
+        RSI measures momentum on a scale of 0-100. Above 70 (red zone) suggests overbought conditions—potential reversal down. 
+        Below 30 (green zone) indicates oversold—potential bounce up. 
+        RSI helps identify when price has moved too far too fast and may correct.
+        """)
+    
+    st.subheader("Bollinger Bands")
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.plot(df.index[-200:], df['Close'][-200:], label='Price', linewidth=2)
+    ax.plot(df.index[-200:], df['BB_Upper'][-200:], '--', color='#ef4444', label='Upper')
+    ax.plot(df.index[-200:], df['BB_Lower'][-200:], '--', color='#10b981', label='Lower')
+    ax.fill_between(df.index[-200:], df['BB_Lower'][-200:], df['BB_Upper'][-200:], alpha=0.2)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
+    bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
+    
+    with st.expander("📊 Bollinger Bands Analysis (AI-Powered)"):
+        st.info(f"""
+        **Band Position:** Price is currently **{bb_status}** ({bb_position:.0f}% position within bands). 
+        Bollinger Bands expand during high volatility and contract during calm periods. 
+        Price touching upper band (red) may signal overbought; touching lower band (green) suggests oversold. 
+        Price tends to bounce between bands—touching one band often leads to movement toward the other.
+        """)
     
     st.subheader("Volatility Over Time")
     fig, ax = plt.subplots(figsize=(14, 4))
