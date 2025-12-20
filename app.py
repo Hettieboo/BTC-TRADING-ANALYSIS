@@ -373,6 +373,7 @@ st.markdown("""
     }
     [data-testid="stMetricValue"] {
         font-size: 1.1rem !important;
+        font-weight: 700 !important;
     }
     [data-testid="stMetricLabel"] {
         font-size: 0.85rem !important;
