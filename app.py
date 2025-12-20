@@ -371,11 +371,14 @@ st.markdown("""
         padding: 8px 12px;
         border-radius: 8px;
     }
-    div[data-testid="metric-container"] > div[data-testid="stMetricValue"] {
-        font-size: 1.2rem;
+    [data-testid="stMetricValue"] {
+        font-size: 1.1rem !important;
     }
-    div[data-testid="metric-container"] > div[data-testid="stMetricLabel"] {
-        font-size: 0.9rem;
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem !important;
+    }
+    [data-testid="stMetricDelta"] {
+        font-size: 0.8rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
