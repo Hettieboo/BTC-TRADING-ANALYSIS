@@ -216,7 +216,7 @@ threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01,
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Model Configuration")
-model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting", "XGBoost"],
+model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting"],
                                      help="Machine learning algorithm for predictions")
 test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20, 
                                help="Percentage of data reserved for testing") / 100
@@ -370,6 +370,12 @@ st.markdown("""
         border: 1px solid rgba(138, 92, 246, 0.2);
         padding: 8px 12px;
         border-radius: 8px;
+    }
+    div[data-testid="metric-container"] > div[data-testid="stMetricValue"] {
+        font-size: 1.2rem;
+    }
+    div[data-testid="metric-container"] > div[data-testid="stMetricLabel"] {
+        font-size: 0.9rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -775,8 +781,9 @@ with col2:
     st.markdown("""
     <div style='text-align: center; padding: 20px;'>
         <p style='color: #888; font-size: 0.9em;'>
-            ⚡ <strong>BTC AI Trading Dashboard</strong> • Built with Streamlit & Scikit-learn<br>
-            Educational purposes only • Not financial advice
+            ⚡ <strong>BTC AI Trading Dashboard</strong> • Built by Henrietta Atsenokhai with Streamlit & Scikit-learn<br>
+            Educational purposes only • Not financial advice<br>
+            © 2025 Henrietta Atsenokhai. All rights reserved.
         </p>
     </div>
     """, unsafe_allow_html=True)
