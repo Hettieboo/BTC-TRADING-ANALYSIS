@@ -595,4 +595,32 @@ with tab3:
     st.subheader("Model Adaptation Over Time")
     fig_rolling, ax_rolling = plt.subplots(figsize=(14, 4))
     test_dates = df.index[split_idx + rolling_window:]
-    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='
+    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='30-Day Rolling R²')
+    ax_rolling.axhline(0, color='red', linestyle='--', linewidth=1, alpha=0.5)
+    ax_rolling.axhline(r2, color='green', linestyle='--', linewidth=1, alpha=0.5, label=f'Overall R² ({r2:.3f})')
+    ax_rolling.fill_between(test_dates, 0, rolling_r2, alpha=0.3, color='#8a5cf6')
+    ax_rolling.set_ylabel('R² Score')
+    ax_rolling.legend()
+    ax_rolling.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig_rolling)
+    plt.close()
+    
+    recent_performance = np.mean(rolling_r2[-10:]) if len(rolling_r2) >= 10 else r2
+    performance_trend = "improving" if recent_performance > r2 else "declining" if recent_performance < r2 * 0.9 else "stable"
+    adaptability = "good" if np.std(rolling_r2) < 0.3 else "moderate" if np.std(rolling_r2) < 0.5 else "volatile"
+    
+    with st.expander("📊 Model Adaptation Analysis (AI-Powered)"):
+        st.info(f"""
+        **Model Adaptation:** This shows how well the model performs over time. Rolling R² is currently **{performance_trend}** with recent performance at **{recent_performance:.3f}**.
+        Model adaptability is **{adaptability}** (volatility: {np.std(rolling_r2):.3f}). 
+        
+        **Why performance varies:**
+        - 📈 **Market Regime Changes**: Bull markets vs bear markets require different strategies
+        - 🔄 **Pattern Shifts**: New trends that weren't in training data
+        - ⚡ **Volatility**: High volatility periods are harder to predict
+        - 📊 **Training Window**: Using {retrain_window} days of recent data to stay current
+        
+        Above zero = model adds value. Below zero = random guessing would be better. Adjust the training window to adapt faster or slower to new patterns.
+        """)
