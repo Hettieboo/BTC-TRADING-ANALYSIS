@@ -847,7 +847,7 @@ with col2:
     <div style='text-align: center; padding: 20px;'>
         <p style='color: #888; font-size: 0.9em;'>
             ⚡ <strong>BTC AI Trading Dashboard</strong><br>
-            Built by Henrietta Atsenokhai with Streamlit & Scikit-learn<br>
+            Built with Streamlit & Scikit-learn<br>
             Educational purposes only • Not financial advice<br>
             © 2025 Henrietta Atsenokhai. All rights reserved.
         </p>
