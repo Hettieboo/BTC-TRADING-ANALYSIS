@@ -17,6 +17,36 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Hide Streamlit UI elements for professional look
+st.markdown("""
+<style>
+    /* Hide GitHub icon and deploy button */
+    .stAppDeployButton {
+        display: none;
+    }
+    
+    /* Hide "Made with Streamlit" footer */
+    footer {
+        visibility: hidden;
+    }
+    
+    /* Hide hamburger menu */
+    #MainMenu {
+        visibility: hidden;
+    }
+    
+    /* Hide header (top bar with icons) */
+    header {
+        visibility: hidden;
+    }
+    
+    /* Remove extra top padding after hiding header */
+    .block-container {
+        padding-top: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Set style
 plt.style.use('dark_background')
 sns.set_palette("husl")
@@ -202,26 +232,19 @@ st.markdown("### Advanced Algorithmic Trading with Machine Learning")
 # Sidebar
 # =========================
 st.sidebar.header("🎛️ Strategy Parameters")
-use_live_data = st.sidebar.checkbox("📡 Use Live Data (Yahoo Finance)", value=True, 
-                                     help="Fetch real-time Bitcoin data from Yahoo Finance")
+use_live_data = st.sidebar.checkbox("📡 Use Live Data (Yahoo Finance)", value=True)
 
-ma_short = st.sidebar.slider("Short MA", 5, 30, 7, 
-                              help="Short-term moving average period in days")
-ma_long = st.sidebar.slider("Long MA", 30, 120, 30, 
-                             help="Long-term moving average period in days")
-rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14, 
-                                help="Period for calculating Relative Strength Index")
-threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01, 
-                               help="Minimum predicted return to trigger buy/sell signal") / 100
+ma_short = st.sidebar.slider("Short MA", 5, 30, 7)
+ma_long = st.sidebar.slider("Long MA", 30, 120, 30)
+rsi_period = st.sidebar.slider("RSI Period", 7, 28, 14)
+threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01) / 100
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Model Configuration")
-model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting"],
-                                     help="Machine learning algorithm for predictions")
-test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20, 
-                               help="Percentage of data reserved for testing") / 100
+model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting", "XGBoost"])
+test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20) / 100
 retrain_window = st.sidebar.slider("Retrain Window (days)", 100, 500, 252, 
-                                     help="Number of recent days used for model training")
+                                     help="How much recent data to use for training")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
@@ -328,7 +351,6 @@ else:  # XGBoost
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 r2 = r2_score(y_test, y_pred)
-mae = mean_absolute_error(y_test, y_pred)
 
 # Rolling performance
 rolling_window = 30
@@ -370,16 +392,6 @@ st.markdown("""
         border: 1px solid rgba(138, 92, 246, 0.2);
         padding: 8px 12px;
         border-radius: 8px;
-    }
-    [data-testid="stMetricValue"] {
-        font-size: 1.1rem !important;
-        font-weight: 700 !important;
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 0.85rem !important;
-    }
-    [data-testid="stMetricDelta"] {
-        font-size: 0.8rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -497,54 +509,58 @@ with tab1:
             """)
 
 with tab2:
-    st.subheader("RSI Indicator")
-    fig, ax = plt.subplots(figsize=(14, 4))
-    ax.plot(df.index[-200:], df['RSI'][-200:], linewidth=2, color='#8a5cf6')
-    ax.axhline(70, color='#ef4444', linestyle='--', linewidth=2, label='Overbought')
-    ax.axhline(30, color='#10b981', linestyle='--', linewidth=2, label='Oversold')
-    ax.fill_between(df.index[-200:], 70, 100, alpha=0.2, color='red')
-    ax.fill_between(df.index[-200:], 0, 30, alpha=0.2, color='green')
-    ax.set_ylim(0, 100)
-    ax.legend()
-    ax.grid(alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
+    col1, col2 = st.columns(2)
     
-    rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
+    with col1:
+        st.subheader("RSI Indicator")
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(df.index[-200:], df['RSI'][-200:], linewidth=2, color='#8a5cf6')
+        ax.axhline(70, color='#ef4444', linestyle='--', linewidth=2, label='Overbought')
+        ax.axhline(30, color='#10b981', linestyle='--', linewidth=2, label='Oversold')
+        ax.fill_between(df.index[-200:], 70, 100, alpha=0.2, color='red')
+        ax.fill_between(df.index[-200:], 0, 30, alpha=0.2, color='green')
+        ax.set_ylim(0, 100)
+        ax.legend()
+        ax.grid(alpha=0.3)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+        
+        rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
+        
+        with st.expander("📊 RSI Analysis (AI-Powered)"):
+            st.info(f"""
+            **RSI Reading:** Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
+            RSI measures momentum on a scale of 0-100. Above 70 (red zone) suggests overbought conditions—potential reversal down. 
+            Below 30 (green zone) indicates oversold—potential bounce up. 
+            RSI helps identify when price has moved too far too fast and may correct.
+            """)
     
-    with st.expander("📊 RSI Analysis (AI-Powered)"):
-        st.info(f"""
-        **RSI Reading:** Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
-        RSI measures momentum on a scale of 0-100. Above 70 (red zone) suggests overbought conditions—potential reversal down. 
-        Below 30 (green zone) indicates oversold—potential bounce up. 
-        RSI helps identify when price has moved too far too fast and may correct.
-        """)
-    
-    st.subheader("Bollinger Bands")
-    fig, ax = plt.subplots(figsize=(14, 4))
-    ax.plot(df.index[-200:], df['Close'][-200:], label='Price', linewidth=2)
-    ax.plot(df.index[-200:], df['BB_Upper'][-200:], '--', color='#ef4444', label='Upper')
-    ax.plot(df.index[-200:], df['BB_Lower'][-200:], '--', color='#10b981', label='Lower')
-    ax.fill_between(df.index[-200:], df['BB_Lower'][-200:], df['BB_Upper'][-200:], alpha=0.2)
-    ax.legend()
-    ax.grid(alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
-    
-    bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
-    bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
-    
-    with st.expander("📊 Bollinger Bands Analysis (AI-Powered)"):
-        st.info(f"""
-        **Band Position:** Price is currently **{bb_status}** ({bb_position:.0f}% position within bands). 
-        Bollinger Bands expand during high volatility and contract during calm periods. 
-        Price touching upper band (red) may signal overbought; touching lower band (green) suggests oversold. 
-        Price tends to bounce between bands—touching one band often leads to movement toward the other.
-        """)
+    with col2:
+        st.subheader("Bollinger Bands")
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(df.index[-200:], df['Close'][-200:], label='Price', linewidth=2)
+        ax.plot(df.index[-200:], df['BB_Upper'][-200:], '--', color='#ef4444', label='Upper')
+        ax.plot(df.index[-200:], df['BB_Lower'][-200:], '--', color='#10b981', label='Lower')
+        ax.fill_between(df.index[-200:], df['BB_Lower'][-200:], df['BB_Upper'][-200:], alpha=0.2)
+        ax.legend()
+        ax.grid(alpha=0.3)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+        
+        bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
+        bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
+        
+        with st.expander("📊 Bollinger Bands Analysis (AI-Powered)"):
+            st.info(f"""
+            **Band Position:** Price is currently **{bb_status}** ({bb_position:.0f}% position within bands). 
+            Bollinger Bands expand during high volatility and contract during calm periods. 
+            Price touching upper band (red) may signal overbought; touching lower band (green) suggests oversold. 
+            Price tends to bounce between bands—touching one band often leads to movement toward the other.
+            """)
     
     st.subheader("Volatility Over Time")
     fig, ax = plt.subplots(figsize=(14, 4))
@@ -572,225 +588,11 @@ with tab3:
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("R² Score", f"{r2:.4f}")
-    col2.metric("MAE", f"{mae:.6f}")
+    col2.metric("Training Window", f"{retrain_window} days")
     col3.metric("Training Samples", f"{len(X_train):,}")
     col4.metric("Test Samples", f"{len(X_test):,}")
     
-    st.subheader("Model Adaptation Over Time (Rolling R²)")
+    st.subheader("Model Adaptation Over Time")
     fig_rolling, ax_rolling = plt.subplots(figsize=(14, 4))
     test_dates = df.index[split_idx + rolling_window:]
-    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='Rolling R² (30-day window)')
-    ax_rolling.axhline(0, color='red', linestyle='--', alpha=0.5)
-    ax_rolling.set_ylabel('R² Score')
-    ax_rolling.legend()
-    ax_rolling.grid(alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig_rolling)
-    plt.close()
-    
-    with st.expander("📊 Model Adaptation Analysis (AI-Powered)"):
-        avg_rolling_r2 = np.mean(rolling_r2)
-        st.info(f"""
-        **Model Stability:** The rolling R² shows how well the model predicts over time. 
-        Average rolling R² is **{avg_rolling_r2:.4f}**. Positive values indicate the model adds predictive value. 
-        Fluctuations are normal as market conditions change. Consistent positive R² suggests robust predictions. 
-        Drops below zero indicate periods where the model struggled with market regime changes.
-        """)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Feature Importance")
-        if hasattr(model, 'feature_importances_'):
-            importances = model.feature_importances_
-            feature_importance_df = pd.DataFrame({
-                'Feature': feature_cols,
-                'Importance': importances
-            }).sort_values('Importance', ascending=True)
-            
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.barh(feature_importance_df['Feature'], feature_importance_df['Importance'], color='#8a5cf6')
-            ax.set_xlabel('Importance')
-            ax.grid(alpha=0.3, axis='x')
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.close()
-            
-            top_feature = feature_importance_df.iloc[-1]['Feature']
-            top_importance = feature_importance_df.iloc[-1]['Importance']
-            
-            with st.expander("📊 Feature Importance Analysis (AI-Powered)"):
-                st.info(f"""
-                **Most Important Feature:** **{top_feature}** (importance: {top_importance:.4f}). 
-                Feature importance shows which indicators the model relies on most for predictions. 
-                Higher bars mean the model considers that feature more critical for making accurate predictions. 
-                This helps understand what drives the model's trading decisions.
-                """)
-        else:
-            st.info("Feature importance not available for this model type.")
-    
-    with col2:
-        st.subheader("Predictions vs Actual Returns")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sample_size = min(200, len(y_test))
-        ax.scatter(y_test[-sample_size:], y_pred[-sample_size:], alpha=0.5, color='#8a5cf6')
-        
-        # Perfect prediction line
-        min_val = min(y_test[-sample_size:].min(), y_pred[-sample_size:].min())
-        max_val = max(y_test[-sample_size:].max(), y_pred[-sample_size:].max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
-        
-        ax.set_xlabel('Actual Returns')
-        ax.set_ylabel('Predicted Returns')
-        ax.legend()
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        
-        with st.expander("📊 Prediction Accuracy Analysis (AI-Powered)"):
-            st.info(f"""
-            **Prediction Quality:** Points closer to the red diagonal line indicate accurate predictions. 
-            R² score of **{r2:.4f}** measures overall fit. Scatter around the line shows prediction variance. 
-            The model aims to predict whether returns will be positive or negative, not exact values. 
-            Clustering near the line suggests the model captures market direction well.
-            """)
-
-with tab4:
-    st.subheader("Cumulative Returns: Strategy vs Market")
-    
-    fig, ax = plt.subplots(figsize=(14, 6))
-    ax.plot(df_test.index, (df_test['Cum_Market'] - 1) * 100, 
-            label='Buy & Hold', linewidth=2.5, color='#f59e0b')
-    ax.plot(df_test.index, (df_test['Cum_Strategy'] - 1) * 100, 
-            label='ML Strategy', linewidth=2.5, color='#10b981')
-    ax.axhline(0, color='white', linestyle='--', alpha=0.3)
-    ax.set_ylabel('Return (%)')
-    ax.legend(fontsize=12)
-    ax.grid(alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
-    
-    outperformance = strategy_ret - market_ret
-    better = "outperformed" if outperformance > 0 else "underperformed"
-    
-    with st.expander("📊 Performance Comparison (AI-Powered)"):
-        st.info(f"""
-        **Strategy Performance:** The ML strategy **{better}** buy-and-hold by **{abs(outperformance):.2f}%**. 
-        The green line shows returns from following ML signals; orange shows simple buy-and-hold. 
-        Outperformance suggests the model successfully times entries and exits. 
-        Underperformance indicates transaction costs or poor market timing may be hurting results.
-        """)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Drawdown Analysis")
-        
-        # Calculate drawdowns
-        cumulative = df_test['Cum_Strategy']
-        running_max = cumulative.expanding().max()
-        drawdown = (cumulative - running_max) / running_max * 100
-        
-        fig, ax = plt.subplots(figsize=(12, 5))
-        ax.fill_between(df_test.index, drawdown, 0, alpha=0.7, color='#ef4444')
-        ax.plot(df_test.index, drawdown, linewidth=2, color='#ef4444')
-        ax.set_ylabel('Drawdown (%)')
-        ax.grid(alpha=0.3)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        
-        max_dd = drawdown.min()
-        
-        with st.expander("📊 Drawdown Analysis (AI-Powered)"):
-            st.info(f"""
-            **Maximum Drawdown:** **{max_dd:.2f}%** - the largest peak-to-trough decline. 
-            Drawdowns show how much capital was lost from the highest point before recovering. 
-            Smaller drawdowns indicate better risk management and capital preservation. 
-            Large drawdowns can test investor patience and increase emotional trading decisions.
-            """)
-    
-    with col2:
-        st.subheader("Trade Distribution")
-        
-        trade_signals = df_test[df_test['Signal'] != 0]['Signal']
-        signal_counts = trade_signals.value_counts()
-        
-        fig, ax = plt.subplots(figsize=(12, 5))
-        labels = ['Buy Signals', 'Sell Signals']
-        colors = ['#10b981', '#ef4444']
-        sizes = [signal_counts.get(1, 0), signal_counts.get(-1, 0)]
-        
-        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', 
-               startangle=90, textprops={'fontsize': 12})
-        ax.axis('equal')
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-        
-        buy_pct = (signal_counts.get(1, 0) / total_trades * 100) if total_trades > 0 else 0
-        
-        with st.expander("📊 Trading Pattern Analysis (AI-Powered)"):
-            st.info(f"""
-            **Signal Distribution:** **{buy_pct:.1f}%** buy signals vs **{100-buy_pct:.1f}%** sell signals. 
-            Balanced distribution suggests the model responds to both bullish and bearish conditions. 
-            Heavy bias toward one direction may indicate trend-following behavior. 
-            Total of **{total_trades}** trades executed during the test period.
-            """)
-    
-    st.subheader("Performance Metrics Summary")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    # Calculate additional metrics
-    total_return_strat = strategy_ret
-    total_return_market = market_ret
-    volatility_strat = df_test['Strat_Returns'].std() * np.sqrt(252) * 100
-    volatility_market = df_test['Returns'].std() * np.sqrt(252) * 100
-    
-    col1.metric("📊 Total Return (Strategy)", f"{total_return_strat:.2f}%")
-    col2.metric("📊 Total Return (Market)", f"{total_return_market:.2f}%")
-    col3.metric("📉 Volatility (Strategy)", f"{volatility_strat:.2f}%")
-    col4.metric("📉 Volatility (Market)", f"{volatility_market:.2f}%")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("⚡ Sharpe Ratio", f"{sharpe:.2f}")
-    col2.metric("🎯 Win Rate", f"{win_rate:.1f}%")
-    col3.metric("📈 Total Trades", f"{total_trades}")
-    col4.metric("✅ Winning Trades", f"{winning_trades}")
-    
-    with st.expander("📊 Metrics Explanation"):
-        st.markdown("""
-        **Key Metrics Explained:**
-        
-        - **Total Return**: Overall percentage gain/loss from start to end of test period
-        - **Volatility**: Annualized standard deviation of returns (higher = more risk)
-        - **Sharpe Ratio**: Risk-adjusted return measure (>1 is good, >2 is excellent)
-        - **Win Rate**: Percentage of profitable trades out of total trades
-        - **Max Drawdown**: Largest peak-to-trough decline (measures worst-case loss)
-        """)
-
-# =========================
-# Footer
-# =========================
-st.markdown("---")
-col1, col2, col3 = st.columns([2, 3, 2])
-
-with col2:
-    st.markdown("""
-    <div style='text-align: center; padding: 20px;'>
-        <p style='color: #888; font-size: 0.9em;'>
-            ⚡ <strong>BTC AI Trading Dashboard</strong> • Built by Henrietta Atsenokhai with Streamlit & Scikit-learn<br>
-            Educational purposes only • Not financial advice<br>
-            © 2025 Henrietta Atsenokhai. All rights reserved.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-if demo_mode:
-    st.info("🎮 **Demo Mode Active**: This dashboard is using synthetic data. Enable 'Use Live Data' in the sidebar to fetch real Bitcoin prices from Yahoo Finance.")
+    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='
