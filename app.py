@@ -27,9 +27,6 @@ st.markdown("""
     #MainMenu {
         visibility: hidden !important;
     }
-    header {
-        visibility: hidden !important;
-    }
     /* Hide footer */
     footer {
         visibility: hidden !important;
@@ -46,9 +43,24 @@ st.markdown("""
     [data-testid="stToolbar"] {
         display: none !important;
     }
-    /* Additional header hiding */
-    section[data-testid="stHeader"] {
+    /* Additional header hiding but KEEP sidebar toggle */
+    section[data-testid="stHeader"] > div:first-child {
         display: none !important;
+    }
+    /* Make sure sidebar toggle button is visible */
+    button[kind="header"][data-testid="baseButton-header"] {
+        display: block !important;
+        visibility: visible !important;
+    }
+    /* Make sidebar collapse button more visible */
+    [data-testid="collapsedControl"] {
+        display: block !important;
+        visibility: visible !important;
+        background-color: rgba(138, 92, 246, 0.3) !important;
+        border-radius: 4px !important;
+    }
+    [data-testid="collapsedControl"]:hover {
+        background-color: rgba(138, 92, 246, 0.5) !important;
     }
     
     /* Make expander arrows more visible */
