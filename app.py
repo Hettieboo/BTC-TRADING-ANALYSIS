@@ -20,14 +20,35 @@ st.set_page_config(
 # Hide Streamlit branding
 st.markdown("""
 <style>
+    /* Hide top-right menu buttons */
     .stAppDeployButton {
-        display: none;
-    }
-    footer {
-        visibility: hidden;
+        display: none !important;
     }
     #MainMenu {
-        visibility: hidden;
+        visibility: hidden !important;
+    }
+    header {
+        visibility: hidden !important;
+    }
+    /* Hide footer */
+    footer {
+        visibility: hidden !important;
+    }
+    /* Hide "Made with Streamlit" */
+    .viewerBadge_container__1QSob {
+        display: none !important;
+    }
+    /* Hide hamburger menu */
+    button[kind="header"] {
+        display: none !important;
+    }
+    /* Hide the entire header toolbar */
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
+    /* Additional header hiding */
+    section[data-testid="stHeader"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
