@@ -251,6 +251,7 @@ def generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_r
 # =========================
 st.title("⚡ BTC AI Trading Dashboard")
 st.markdown("### Advanced Algorithmic Trading with Machine Learning")
+st.warning("⚠️ **DEMO VERSION** - For demonstration purposes only")
 
 # =========================
 # Sidebar
@@ -835,7 +836,8 @@ with col2:
     st.markdown("""
     <div style='text-align: center; padding: 20px;'>
         <p style='color: #888; font-size: 0.9em;'>
-            ⚡ <strong>BTC AI Trading Dashboard</strong> • Built by Henrietta Atsenokhai with Streamlit & Scikit-learn<br>
+            ⚡ <strong>BTC AI Trading Dashboard</strong><br>
+            Built by Henrietta Atsenokhai with Streamlit & Scikit-learn<br>
             Educational purposes only • Not financial advice<br>
             © 2025 Henrietta Atsenokhai. All rights reserved.
         </p>
