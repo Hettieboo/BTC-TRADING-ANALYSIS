@@ -270,7 +270,7 @@ threshold = st.sidebar.slider("Threshold (%)", 0.0, 1.0, 0.05, 0.01,
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Model Configuration")
-model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting"],
+model_choice = st.sidebar.selectbox("ML Model", ["Random Forest", "Gradient Boosting", "XGBoost"],
                                      help="Machine learning algorithm for predictions")
 test_size = st.sidebar.slider("Test Size (%)", 10, 40, 20, 
                                help="Percentage of data reserved for testing") / 100
