@@ -50,6 +50,29 @@ st.markdown("""
     section[data-testid="stHeader"] {
         display: none !important;
     }
+    
+    /* Make expander arrows more visible */
+    .streamlit-expanderHeader {
+        background-color: rgba(138, 92, 246, 0.1) !important;
+        border: 1px solid rgba(138, 92, 246, 0.3) !important;
+        border-radius: 4px !important;
+        padding: 8px !important;
+    }
+    .streamlit-expanderHeader:hover {
+        background-color: rgba(138, 92, 246, 0.2) !important;
+        border-color: rgba(138, 92, 246, 0.5) !important;
+    }
+    /* Make the arrow icon more visible */
+    .streamlit-expanderHeader svg {
+        fill: #8a5cf6 !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+    /* Style for expander content */
+    details[open] summary {
+        border-bottom: 1px solid rgba(138, 92, 246, 0.3) !important;
+        margin-bottom: 10px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
