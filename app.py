@@ -35,15 +35,11 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* Hide header (top bar with icons) */
-    header {
+    /* Keep header visible so sidebar toggle works */
+    /* Uncomment below to hide header completely if needed */
+    /* header {
         visibility: hidden;
-    }
-    
-    /* Remove extra top padding after hiding header */
-    .block-container {
-        padding-top: 2rem;
-    }
+    } */
 </style>
 """, unsafe_allow_html=True)
 
