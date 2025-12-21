@@ -249,14 +249,19 @@ def generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_r
 # =========================
 # Header
 # =========================
-st.title("⚡ BTC AI Trading Dashboard")
-st.markdown("### Advanced Algorithmic Trading with Machine Learning")
+st.markdown("""
+<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 20px; border-radius: 10px; margin-bottom: 10px;'>
+    <h1 style='color: white; margin: 0; font-size: 2em;'>⚡ BTC AI Trading Dashboard</h1>
+    <p style='color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 1.1em;'>Advanced Algorithmic Trading with Machine Learning</p>
+</div>
+""", unsafe_allow_html=True)
 
-col1, col2 = st.columns([1, 4])
-with col1:
-    st.warning("⚠️ **DEMO VERSION**")
-with col2:
-    pass  # Empty column for spacing
+st.markdown("""
+<div style='background-color: rgba(251, 191, 36, 0.15); border-left: 4px solid #f59e0b; padding: 8px 15px; margin-bottom: 15px; border-radius: 4px;'>
+    <span style='color: #d97706; font-weight: 600;'>⚠️ DEMO VERSION</span>
+    <span style='color: #92400e; margin-left: 10px;'>For demonstration purposes only</span>
+</div>
+""", unsafe_allow_html=True)
 
 # =========================
 # Sidebar
