@@ -20,35 +20,53 @@ st.set_page_config(
 # Hide Streamlit branding
 st.markdown("""
 <style>
-    /* Hide top-right menu buttons */
+    /* Hide Deploy button */
     .stAppDeployButton {
         display: none !important;
     }
+    /* Hide MainMenu (hamburger) */
     #MainMenu {
-        visibility: hidden !important;
-    }
-    header {
         visibility: hidden !important;
     }
     /* Hide footer */
     footer {
         visibility: hidden !important;
     }
-    /* Hide "Made with Streamlit" */
+    /* Hide "Made with Streamlit" badge */
     .viewerBadge_container__1QSob {
         display: none !important;
     }
-    /* Hide hamburger menu */
-    button[kind="header"] {
-        display: none !important;
-    }
-    /* Hide the entire header toolbar */
+    /* Hide the toolbar (Share, Star, etc.) */
     [data-testid="stToolbar"] {
         display: none !important;
     }
-    /* Additional header hiding */
-    section[data-testid="stHeader"] {
-        display: none !important;
+    
+    /* Force sidebar to be visible */
+    [data-testid="stSidebar"] {
+        display: block !important;
+        visibility: visible !important;
+    }
+    /* Make sidebar collapse button visible */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    
+    /* Make expander arrows more visible */
+    [data-testid="stExpander"] summary {
+        background-color: rgba(138, 92, 246, 0.1) !important;
+        border: 1px solid rgba(138, 92, 246, 0.3) !important;
+        border-radius: 4px !important;
+        padding: 10px !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: rgba(138, 92, 246, 0.2) !important;
+        border-color: rgba(138, 92, 246, 0.5) !important;
+    }
+    /* Make the arrow icon more visible */
+    [data-testid="stExpander"] summary svg {
+        fill: #8a5cf6 !important;
+        stroke: #8a5cf6 !important;
     }
 </style>
 """, unsafe_allow_html=True)
