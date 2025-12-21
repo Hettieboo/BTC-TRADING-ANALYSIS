@@ -41,6 +41,17 @@ st.markdown("""
         display: none !important;
     }
     
+    /* Force sidebar to be visible */
+    [data-testid="stSidebar"] {
+        display: block !important;
+        visibility: visible !important;
+    }
+    /* Make sidebar collapse button visible */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    
     /* Make expander arrows more visible */
     [data-testid="stExpander"] summary {
         background-color: rgba(138, 92, 246, 0.1) !important;
