@@ -249,6 +249,8 @@ def generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_r
 # =========================
 # Header
 # =========================
+st.title("⚡ BTC AI Trading Dashboard")
+st.markdown("### Advanced Algorithmic Trading with Machine Learning")
 
 # =========================
 # Sidebar
