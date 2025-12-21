@@ -634,64 +634,60 @@ with tab3:
         Drops below zero indicate periods where the model struggled with market regime changes.
         """)
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Feature Importance")
-        if hasattr(model, 'feature_importances_'):
-            importances = model.feature_importances_
-            feature_importance_df = pd.DataFrame({
-                'Feature': feature_cols,
-                'Importance': importances
-            }).sort_values('Importance', ascending=True)
-            
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.barh(feature_importance_df['Feature'], feature_importance_df['Importance'], color='#8a5cf6')
-            ax.set_xlabel('Importance')
-            ax.grid(alpha=0.3, axis='x')
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.close()
-            
-            top_feature = feature_importance_df.iloc[-1]['Feature']
-            top_importance = feature_importance_df.iloc[-1]['Importance']
-            
-            with st.expander("📊 Feature Importance Analysis (AI-Powered)"):
-                st.info(f"""
-                **Most Important Feature:** **{top_feature}** (importance: {top_importance:.4f}). 
-                Feature importance shows which indicators the model relies on most for predictions. 
-                Higher bars mean the model considers that feature more critical for making accurate predictions. 
-                This helps understand what drives the model's trading decisions.
-                """)
-        else:
-            st.info("Feature importance not available for this model type.")
-    
-    with col2:
-        st.subheader("Predictions vs Actual Returns")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sample_size = min(200, len(y_test))
-        ax.scatter(y_test[-sample_size:], y_pred[-sample_size:], alpha=0.5, color='#8a5cf6')
+    st.subheader("Feature Importance")
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+        feature_importance_df = pd.DataFrame({
+            'Feature': feature_cols,
+            'Importance': importances
+        }).sort_values('Importance', ascending=True)
         
-        # Perfect prediction line
-        min_val = min(y_test[-sample_size:].min(), y_pred[-sample_size:].min())
-        max_val = max(y_test[-sample_size:].max(), y_pred[-sample_size:].max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
-        
-        ax.set_xlabel('Actual Returns')
-        ax.set_ylabel('Predicted Returns')
-        ax.legend()
-        ax.grid(alpha=0.3)
+        fig, ax = plt.subplots(figsize=(14, 5))
+        ax.barh(feature_importance_df['Feature'], feature_importance_df['Importance'], color='#8a5cf6')
+        ax.set_xlabel('Importance')
+        ax.grid(alpha=0.3, axis='x')
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
         
-        with st.expander("📊 Prediction Accuracy Analysis (AI-Powered)"):
+        top_feature = feature_importance_df.iloc[-1]['Feature']
+        top_importance = feature_importance_df.iloc[-1]['Importance']
+        
+        with st.expander("📊 Feature Importance Analysis (AI-Powered)"):
             st.info(f"""
-            **Prediction Quality:** Points closer to the red diagonal line indicate accurate predictions. 
-            R² score of **{r2:.4f}** measures overall fit. Scatter around the line shows prediction variance. 
-            The model aims to predict whether returns will be positive or negative, not exact values. 
-            Clustering near the line suggests the model captures market direction well.
+            **Most Important Feature:** **{top_feature}** (importance: {top_importance:.4f}). 
+            Feature importance shows which indicators the model relies on most for predictions. 
+            Higher bars mean the model considers that feature more critical for making accurate predictions. 
+            This helps understand what drives the model's trading decisions.
             """)
+    else:
+        st.info("Feature importance not available for this model type.")
+    
+    st.subheader("Predictions vs Actual Returns")
+    fig, ax = plt.subplots(figsize=(14, 5))
+    sample_size = min(200, len(y_test))
+    ax.scatter(y_test[-sample_size:], y_pred[-sample_size:], alpha=0.5, color='#8a5cf6')
+    
+    # Perfect prediction line
+    min_val = min(y_test[-sample_size:].min(), y_pred[-sample_size:].min())
+    max_val = max(y_test[-sample_size:].max(), y_pred[-sample_size:].max())
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
+    
+    ax.set_xlabel('Actual Returns')
+    ax.set_ylabel('Predicted Returns')
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    with st.expander("📊 Prediction Accuracy Analysis (AI-Powered)"):
+        st.info(f"""
+        **Prediction Quality:** Points closer to the red diagonal line indicate accurate predictions. 
+        R² score of **{r2:.4f}** measures overall fit. Scatter around the line shows prediction variance. 
+        The model aims to predict whether returns will be positive or negative, not exact values. 
+        Clustering near the line suggests the model captures market direction well.
+        """)
 
 with tab4:
     st.subheader("Cumulative Returns: Strategy vs Market")
