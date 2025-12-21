@@ -251,7 +251,12 @@ def generate_recommendations(df, latest, strategy_ret, market_ret, sharpe, win_r
 # =========================
 st.title("⚡ BTC AI Trading Dashboard")
 st.markdown("### Advanced Algorithmic Trading with Machine Learning")
-st.warning("⚠️ **DEMO VERSION** - For demonstration purposes only")
+
+col1, col2 = st.columns([1, 4])
+with col1:
+    st.warning("⚠️ **DEMO VERSION**")
+with col2:
+    pass  # Empty column for spacing
 
 # =========================
 # Sidebar
