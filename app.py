@@ -76,7 +76,7 @@ plt.style.use('dark_background')
 sns.set_palette("husl")
 
 # =========================
-# PASSWORD PROTECTION
+# PASSWORD PROTECTION (ADD THIS SECTION)
 # =========================
 import hashlib
 
@@ -120,76 +120,27 @@ def check_password():
 # =========================
 # Data Loading Functions
 # =========================
-@st.cache_data(ttl=1800)  # Cache for 30 minutes instead of 1 hour for fresher data
+@st.cache_data(ttl=3600)
 def load_live_btc_data():
-    """Load real BTC data from Yahoo Finance with enhanced error handling"""
+    """Load real BTC data from Yahoo Finance"""
     try:
         import yfinance as yf
-        
         end_date = datetime.now()
         start_date = end_date - timedelta(days=1500)
         
-        # Add retry logic with exponential backoff
-        max_retries = 3
-        retry_delay = 1
+        # Try with auto_adjust and threads=False for better reliability
+        btc = yf.download('BTC-USD', start=start_date, end=end_date, 
+                         progress=False, auto_adjust=True, threads=False)
         
-        for attempt in range(max_retries):
-            try:
-                # Download with additional parameters for better reliability
-                btc = yf.download(
-                    'BTC-USD', 
-                    start=start_date, 
-                    end=end_date, 
-                    progress=False,
-                    auto_adjust=True,  # Automatically adjust for splits/dividends
-                    threads=False  # Disable threading which can cause issues
-                )
-                
-                # Handle MultiIndex columns
-                if isinstance(btc.columns, pd.MultiIndex):
-                    btc.columns = btc.columns.get_level_values(0)
-                
-                # Validate data quality
-                if btc.empty:
-                    error_msg = "No data returned from Yahoo Finance"
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(retry_delay)
-                        retry_delay *= 2
-                        continue
-                    return None, error_msg
-                
-                if len(btc) < 100:
-                    error_msg = f"Insufficient data returned (got {len(btc)} rows, need at least 100)"
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(retry_delay)
-                        retry_delay *= 2
-                        continue
-                    return None, error_msg
-                
-                # Check for data freshness (should have recent data)
-                days_since_last_data = (datetime.now() - btc.index[-1]).days
-                if days_since_last_data > 7:
-                    return None, f"Data is stale (last update: {btc.index[-1].strftime('%Y-%m-%d')})"
-                
-                return btc, None
-                
-            except Exception as e:
-                error_detail = str(e)
-                if attempt < max_retries - 1:
-                    import time
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                    continue
-                return None, f"Download failed after {max_retries} attempts: {error_detail}"
+        if isinstance(btc.columns, pd.MultiIndex):
+            btc.columns = btc.columns.get_level_values(0)
         
-        return None, "Max retries exceeded"
+        if btc.empty or len(btc) < 100:
+            return None, f"Insufficient data returned (got {len(btc)} rows)"
         
-    except ImportError:
-        return None, "yfinance library not installed. Install with: pip install yfinance"
+        return btc, None
     except Exception as e:
-        return None, f"Unexpected error: {str(e)}"
+        return None, str(e)
 
 @st.cache_data
 def generate_synthetic_btc_data(n_days=1500):
@@ -348,24 +299,20 @@ st.sidebar.info("""
 # Load Data
 # =========================
 demo_mode = False
-data_status_placeholder = st.empty()
-
 if use_live_data:
-    with st.spinner("📡 Fetching live BTC data from Yahoo Finance..."):
+    with st.spinner("📡 Fetching live BTC data..."):
         btc, error = load_live_btc_data()
         
         if btc is None:
-            data_status_placeholder.warning(f"⚠️ Unable to fetch live data: {error}\n\nUsing demo data instead.")
+            st.warning(f"⚠️ Unable to fetch live data. Using demo data.")
             btc = generate_synthetic_btc_data()
             demo_mode = True
         else:
-            last_update = btc.index[-1].strftime('%Y-%m-%d %H:%M')
-            data_points = len(btc)
-            data_status_placeholder.success(f"✅ Live data loaded successfully! {data_points:,} data points | Last updated: {last_update}")
+            st.success(f"✅ Live data loaded! Last updated: {btc.index[-1].strftime('%Y-%m-%d')}")
 else:
     btc = generate_synthetic_btc_data()
     demo_mode = True
-    data_status_placeholder.info("🎮 **DEMO MODE**: Using synthetic data for demonstration")
+    st.info("🎮 **DEMO MODE**: Using synthetic data")
 
 # Feature engineering
 @st.cache_data
@@ -619,4 +566,283 @@ with tab2:
     ax.grid(alpha=0.3)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    st.pyplot
+    st.pyplot(fig)
+    plt.close()
+    
+    rsi_status = "overbought (>70)" if latest['RSI'] > 70 else "oversold (<30)" if latest['RSI'] < 30 else "neutral (30-70)"
+    
+    with st.expander("📊 RSI Analysis (AI-Powered)"):
+        st.info(f"""
+        **RSI Reading:** Currently at **{latest['RSI']:.1f}** ({rsi_status}). 
+        RSI measures momentum on a scale of 0-100. Above 70 (red zone) suggests overbought conditions—potential reversal down. 
+        Below 30 (green zone) indicates oversold—potential bounce up. 
+        RSI helps identify when price has moved too far too fast and may correct.
+        """)
+    
+    st.subheader("Bollinger Bands")
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.plot(df.index[-200:], df['Close'][-200:], label='Price', linewidth=2)
+    ax.plot(df.index[-200:], df['BB_Upper'][-200:], '--', color='#ef4444', label='Upper')
+    ax.plot(df.index[-200:], df['BB_Lower'][-200:], '--', color='#10b981', label='Lower')
+    ax.fill_between(df.index[-200:], df['BB_Lower'][-200:], df['BB_Upper'][-200:], alpha=0.2)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    bb_position = ((latest['Close'] - latest['BB_Lower']) / (latest['BB_Upper'] - latest['BB_Lower']) * 100)
+    bb_status = "near upper band" if bb_position > 80 else "near lower band" if bb_position < 20 else "in the middle"
+    
+    with st.expander("📊 Bollinger Bands Analysis (AI-Powered)"):
+        st.info(f"""
+        **Band Position:** Price is currently **{bb_status}** ({bb_position:.0f}% position within bands). 
+        Bollinger Bands expand during high volatility and contract during calm periods. 
+        Price touching upper band (red) may signal overbought; touching lower band (green) suggests oversold. 
+        Price tends to bounce between bands—touching one band often leads to movement toward the other.
+        """)
+    
+    st.subheader("Volatility Over Time")
+    fig, ax = plt.subplots(figsize=(14, 4))
+    ax.fill_between(df.index[-200:], 0, df['Volatility_7'][-200:] * 100, alpha=0.7, color='#ef4444')
+    ax.plot(df.index[-200:], df['Volatility_7'][-200:] * 100, linewidth=2, color='#ef4444')
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    avg_vol = df['Volatility_7'].mean() * 100
+    current_vol_status = "high" if latest['Volatility_7'] * 100 > avg_vol * 1.5 else "low" if latest['Volatility_7'] * 100 < avg_vol * 0.5 else "normal"
+    
+    with st.expander("📊 Volatility Analysis (AI-Powered)"):
+        st.info(f"""
+        **Volatility Status:** Currently at **{latest['Volatility_7']*100:.2f}%** ({current_vol_status} compared to {avg_vol:.2f}% average). 
+        Higher volatility means larger price swings—more risk but also more trading opportunities. 
+        Volatility spikes often precede major price moves. Low volatility suggests stable, predictable prices. 
+        Traders adjust position sizes based on volatility to manage risk.
+        """)
+
+with tab3:
+    st.subheader(f"Model Performance: {model_choice}")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("R² Score", f"{r2:.4f}")
+    col2.metric("MAE", f"{mae:.6f}")
+    col3.metric("Training Samples", f"{len(X_train):,}")
+    col4.metric("Test Samples", f"{len(X_test):,}")
+    
+    st.subheader("Model Adaptation Over Time (Rolling R²)")
+    fig_rolling, ax_rolling = plt.subplots(figsize=(14, 4))
+    test_dates = df.index[split_idx + rolling_window:]
+    ax_rolling.plot(test_dates, rolling_r2, linewidth=2, color='#8a5cf6', label='Rolling R² (30-day window)')
+    ax_rolling.axhline(0, color='red', linestyle='--', alpha=0.5)
+    ax_rolling.set_ylabel('R² Score')
+    ax_rolling.legend()
+    ax_rolling.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig_rolling)
+    plt.close()
+    
+    with st.expander("📊 Model Adaptation Analysis (AI-Powered)"):
+        avg_rolling_r2 = np.mean(rolling_r2)
+        st.info(f"""
+        **Model Stability:** The rolling R² shows how well the model predicts over time. 
+        Average rolling R² is **{avg_rolling_r2:.4f}**. Positive values indicate the model adds predictive value. 
+        Fluctuations are normal as market conditions change. Consistent positive R² suggests robust predictions. 
+        Drops below zero indicate periods where the model struggled with market regime changes.
+        """)
+    
+    st.subheader("Feature Importance")
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+        feature_importance_df = pd.DataFrame({
+            'Feature': feature_cols,
+            'Importance': importances
+        }).sort_values('Importance', ascending=True)
+        
+        fig, ax = plt.subplots(figsize=(14, 5))
+        ax.barh(feature_importance_df['Feature'], feature_importance_df['Importance'], color='#8a5cf6')
+        ax.set_xlabel('Importance')
+        ax.grid(alpha=0.3, axis='x')
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+        
+        top_feature = feature_importance_df.iloc[-1]['Feature']
+        top_importance = feature_importance_df.iloc[-1]['Importance']
+        
+        with st.expander("📊 Feature Importance Analysis (AI-Powered)"):
+            st.info(f"""
+            **Most Important Feature:** **{top_feature}** (importance: {top_importance:.4f}). 
+            Feature importance shows which indicators the model relies on most for predictions. 
+            Higher bars mean the model considers that feature more critical for making accurate predictions. 
+            This helps understand what drives the model's trading decisions.
+            """)
+    else:
+        st.info("Feature importance not available for this model type.")
+    
+    st.subheader("Predictions vs Actual Returns")
+    fig, ax = plt.subplots(figsize=(14, 5))
+    sample_size = min(200, len(y_test))
+    ax.scatter(y_test[-sample_size:], y_pred[-sample_size:], alpha=0.5, color='#8a5cf6')
+    
+    # Perfect prediction line
+    min_val = min(y_test[-sample_size:].min(), y_pred[-sample_size:].min())
+    max_val = max(y_test[-sample_size:].max(), y_pred[-sample_size:].max())
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Prediction')
+    
+    ax.set_xlabel('Actual Returns')
+    ax.set_ylabel('Predicted Returns')
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    with st.expander("📊 Prediction Accuracy Analysis (AI-Powered)"):
+        st.info(f"""
+        **Prediction Quality:** Points closer to the red diagonal line indicate accurate predictions. 
+        R² score of **{r2:.4f}** measures overall fit. Scatter around the line shows prediction variance. 
+        The model aims to predict whether returns will be positive or negative, not exact values. 
+        Clustering near the line suggests the model captures market direction well.
+        """)
+
+with tab4:
+    st.subheader("Cumulative Returns: Strategy vs Market")
+    
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.plot(df_test.index, (df_test['Cum_Market'] - 1) * 100, 
+            label='Buy & Hold', linewidth=2.5, color='#f59e0b')
+    ax.plot(df_test.index, (df_test['Cum_Strategy'] - 1) * 100, 
+            label='ML Strategy', linewidth=2.5, color='#10b981')
+    ax.axhline(0, color='white', linestyle='--', alpha=0.3)
+    ax.set_ylabel('Return (%)')
+    ax.legend(fontsize=12)
+    ax.grid(alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+    
+    outperformance = strategy_ret - market_ret
+    better = "outperformed" if outperformance > 0 else "underperformed"
+    
+    with st.expander("📊 Performance Comparison (AI-Powered)"):
+        st.info(f"""
+        **Strategy Performance:** The ML strategy **{better}** buy-and-hold by **{abs(outperformance):.2f}%**. 
+        The green line shows returns from following ML signals; orange shows simple buy-and-hold. 
+        Outperformance suggests the model successfully times entries and exits. 
+        Underperformance indicates transaction costs or poor market timing may be hurting results.
+        """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Drawdown Analysis")
+        
+        # Calculate drawdowns
+        cumulative = df_test['Cum_Strategy']
+        running_max = cumulative.expanding().max()
+        drawdown = (cumulative - running_max) / running_max * 100
+        
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.fill_between(df_test.index, drawdown, 0, alpha=0.7, color='#ef4444')
+        ax.plot(df_test.index, drawdown, linewidth=2, color='#ef4444')
+        ax.set_ylabel('Drawdown (%)')
+        ax.grid(alpha=0.3)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+        
+        max_dd = drawdown.min()
+        
+        with st.expander("📊 Drawdown Analysis (AI-Powered)"):
+            st.info(f"""
+            **Maximum Drawdown:** **{max_dd:.2f}%** - the largest peak-to-trough decline. 
+            Drawdowns show how much capital was lost from the highest point before recovering. 
+            Smaller drawdowns indicate better risk management and capital preservation. 
+            Large drawdowns can test investor patience and increase emotional trading decisions.
+            """)
+    
+    with col2:
+        st.subheader("Trade Distribution")
+        
+        trade_signals = df_test[df_test['Signal'] != 0]['Signal']
+        signal_counts = trade_signals.value_counts()
+        
+        fig, ax = plt.subplots(figsize=(12, 5))
+        labels = ['Buy Signals', 'Sell Signals']
+        colors = ['#10b981', '#ef4444']
+        sizes = [signal_counts.get(1, 0), signal_counts.get(-1, 0)]
+        
+        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', 
+               startangle=90, textprops={'fontsize': 12})
+        ax.axis('equal')
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+        
+        buy_pct = (signal_counts.get(1, 0) / total_trades * 100) if total_trades > 0 else 0
+        
+        with st.expander("📊 Trading Pattern Analysis (AI-Powered)"):
+            st.info(f"""
+            **Signal Distribution:** **{buy_pct:.1f}%** buy signals vs **{100-buy_pct:.1f}%** sell signals. 
+            Balanced distribution suggests the model responds to both bullish and bearish conditions. 
+            Heavy bias toward one direction may indicate trend-following behavior. 
+            Total of **{total_trades}** trades executed during the test period.
+            """)
+    
+    st.subheader("Performance Metrics Summary")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    # Calculate additional metrics
+    total_return_strat = strategy_ret
+    total_return_market = market_ret
+    volatility_strat = df_test['Strat_Returns'].std() * np.sqrt(252) * 100
+    volatility_market = df_test['Returns'].std() * np.sqrt(252) * 100
+    
+    col1.metric("📊 Total Return (Strategy)", f"{total_return_strat:.2f}%")
+    col2.metric("📊 Total Return (Market)", f"{total_return_market:.2f}%")
+    col3.metric("📉 Volatility (Strategy)", f"{volatility_strat:.2f}%")
+    col4.metric("📉 Volatility (Market)", f"{volatility_market:.2f}%")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("⚡ Sharpe Ratio", f"{sharpe:.2f}")
+    col2.metric("🎯 Win Rate", f"{win_rate:.1f}%")
+    col3.metric("📈 Total Trades", f"{total_trades}")
+    col4.metric("✅ Winning Trades", f"{winning_trades}")
+    
+    with st.expander("📊 Metrics Explanation"):
+        st.markdown("""
+        **Key Metrics Explained:**
+        
+        - **Total Return**: Overall percentage gain/loss from start to end of test period
+        - **Volatility**: Annualized standard deviation of returns (higher = more risk)
+        - **Sharpe Ratio**: Risk-adjusted return measure (>1 is good, >2 is excellent)
+        - **Win Rate**: Percentage of profitable trades out of total trades
+        - **Max Drawdown**: Largest peak-to-trough decline (measures worst-case loss)
+        """)
+
+# =========================
+# Footer
+# =========================
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; padding: 20px;'>
+    <p style='color: #888; font-size: 0.9em;'>
+        ⚡ <strong>BTC AI Trading Dashboard</strong><br>
+        Built with Streamlit & Scikit-learn<br><br>
+        <strong>⚠️ Disclaimer:</strong> This tool is for educational and informational purposes only.<br>
+        Not financial advice. Always do your own research before making investment decisions.<br><br>
+        © 2026 Henrietta Atsenokhai. All rights reserved.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+if demo_mode:
+    st.info("🎮 **Demo Mode Active**: This dashboard is using synthetic data. Enable 'Use Live Data' in the sidebar to fetch real Bitcoin prices from Yahoo Finance.")
