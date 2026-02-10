@@ -407,13 +407,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ML models from [Scikit-learn](https://scikit-learn.org/)
 - Visualization with [Matplotlib](https://matplotlib.org/) & [Seaborn](https://seaborn.pydata.org/)
 
----
-
-## 📞 Support
-
-For questions, issues, or feedback:
-- Open an issue on GitHub
-- Email: henrietta.atsenokhai@gmail.com
 
 ---
 
